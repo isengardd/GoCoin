@@ -1,5 +1,9 @@
 package coinapi
 
+import (
+	"strconv"
+)
+
 const (
 	ROOT_URL      = "https://www.okcoin.cn/api/v1"
 	CONTENT_TYPE  = "application/x-www-form-urlencoded"
@@ -9,6 +13,7 @@ const (
 	MIN_TRADE_BTC = 0.01
 	MIN_TRADE_LTC = 0.1
 	MIN_TRADE_ETH = 0.01
+	FLEE_LTC      = 0.002 //买卖手续费
 	BUY           = "buy"
 	SELL          = "sell"
 	BUY_MARKET    = "buy_market"
@@ -27,6 +32,11 @@ type Ticker struct {
 	Low  string `json:"low"`  //最低价
 	Sell string `json:"sell"` //卖一价
 	Vol  string `json:"vol"`  //成交量（最近24小时）
+}
+
+func (this *Ticker) GetLast() float32 {
+	Last, _ := strconv.ParseFloat(this.Last, 32)
+	return float32(Last)
 }
 
 type RespDepth struct {
@@ -63,8 +73,8 @@ type innerUserInfo struct {
 
 type innerFunds struct {
 	Asset   MoneyData `json:"asset"`
-	Free    MoneyData `json:"free"`
-	Freezed MoneyData `json:"freezed"`
+	Free    MoneyData `json:"free"`    //账户余额
+	Freezed MoneyData `json:"freezed"` //账户冻结余额
 }
 
 type MoneyData struct {
@@ -74,6 +84,11 @@ type MoneyData struct {
 	Cny   string `json:"cny"`
 	Ltc   string `json:"ltc"`
 	Eth   string `json:"eth"`
+}
+
+func (this *MoneyData) GetLtc() float32 {
+	freecount, _ := strconv.ParseFloat(this.Ltc, 32)
+	return float32(freecount)
 }
 
 type RespDoTrade struct {
@@ -86,7 +101,7 @@ type RespCancelOrder struct {
 	OrderId uint32 `json:"order_id"` //订单号
 }
 
-type RespUnfinishOrderInfo struct {
+type RespGetOrderInfo struct {
 	Result bool         `json:"result"`
 	Orders []OrdersInfo `json:"orders"`
 }
@@ -100,4 +115,12 @@ type OrdersInfo struct {
 	Amount     float32 `json:"amount"`
 	Dealamount float32 `json:"deal_amount"`
 	AvgPrice   float32 `json:"avg_price"`
+}
+
+type RespGetOrderHistory struct {
+	CurrentPage uint32       `json:"current_page"`
+	Orders      []OrdersInfo `json:"orders"`
+	PageLength  uint32       `json:"page_length"`
+	Result      bool         `json:"result"`
+	Total       uint32       `json:"total"`
 }

@@ -230,7 +230,7 @@ type String
 size (默认全部获取) 指定获取数据的条数
 since (默认全部获取) 时间戳（eg：1417536000000）。 返回该时间戳以后的数据
 */
-func GetKline(symbol string, intv string, size uint32, sincems int64) *[]RespKline {
+func GetKline(symbol string, intv string, size int32, sincems int64) *[]RespKline {
 	if symbol == "" {
 		log.Println("GetKline symbol is empty")
 		return nil
@@ -241,7 +241,10 @@ func GetKline(symbol string, intv string, size uint32, sincems int64) *[]RespKli
 	req.Init("GetKline", "kline.do", &kline)
 	req.AddParam(MakeParam("symbol", symbol))
 	req.AddParam(MakeParam("type", intv))
-	req.AddParam(MakeParam("size", size))
+	if size > 0 {
+		req.AddParam(MakeParam("size", size))
+	}
+
 	if sincems > 0 {
 		req.AddParam(MakeParam("since", sincems))
 	}
@@ -460,20 +463,145 @@ status:-1:已撤销  0:未成交  1:部分成交  2:完全成交 4:撤单处理�
 type:buy_market:市价买入 / sell_market:市价卖出
 
 */
-func UnFinishOrderInfo(symbol string) *RespUnfinishOrderInfo {
+func GetOrderInfo(symbol string, orderId int32) *RespGetOrderInfo {
 	config := GetConfig()
 	req := CoinHttp{}
-	req.Init("UnFinishOrderInfo", "order_info.do", &RespUnfinishOrderInfo{})
+	req.Init("GetOrderInfo", "order_info.do", &RespGetOrderInfo{})
 	req.AddParam(MakeParam("api_key", config.ApiKey))
 	req.AddParam(MakeParam("symbol", symbol))
-	req.AddParam(MakeParam("order_id", -1))
+	req.AddParam(MakeParam("order_id", orderId))
 
 	var result interface{}
 	result = req.Post()
 	switch result := result.(type) {
 	default:
 		return nil
-	case *RespUnfinishOrderInfo:
+	case *RespGetOrderInfo:
+		return result
+	}
+}
+
+/*
+URL https://www.okcoin.cn/api/v1/orders_info.do
+访问频率 20次/2秒
+# Request
+POST https://www.okcoin.cn/api/v1/orders_info.do
+# Response
+{
+	"result":true,
+	"orders":[
+		{
+			"order_id":15088,
+			"status":0,
+			"symbol":"btc_cny",
+			"type":"sell",
+			"price":811,
+			"amount":1.39901357,
+			"deal_amount":1,
+			"avg_price":811
+		} ,
+		{
+			"order_id":15088,
+			"status":-1,
+			"symbol":"btc_cny",
+			"type":"sell",
+			"price":811,
+			"amount":1.39901357,
+			"deal_amount":1,
+			"avg_price":811
+		}
+	]
+}
+返回值说明
+amount：限价单请求：下单数量 /市价单请求：卖出的btc/ltc数量
+deal_amount：成交数量
+avg_price：平均成交价
+create_date：委托时间
+order_id：订单ID
+price：限价单请求：委托价格 / 市价单请求：买入的usd金额
+status： -1：已撤销  0：未成交 1：部分成交 2：完全成交 4:撤单处理中
+type:buy_market：市价买入 /sell_market：市价卖出
+result：结果信息
+
+*/
+func GetOrdersInfo(symbol string, querytype uint32) *RespGetOrderInfo {
+	config := GetConfig()
+	req := CoinHttp{}
+	req.Init("GetOrdersInfo", "orders_info.do", &RespGetOrderInfo{})
+	req.AddParam(MakeParam("api_key", config.ApiKey))
+	req.AddParam(MakeParam("symbol", symbol))
+	req.AddParam(MakeParam("type", querytype))
+	//req.AddParam(MakeParam("order_id", ""))
+
+	var result interface{}
+	result = req.Post()
+	switch result := result.(type) {
+	default:
+		return nil
+	case *RespGetOrderInfo:
+		return result
+	}
+}
+
+/*
+获取历史订单信息，只返回最近两天的信息
+URL https://www.okcoin.cn/api/v1/order_history.do
+示例
+# Request
+POST https://www.okcoin.cn/api/v1/order_history.do
+# Response
+{
+	"current_page": 1,
+	"orders": [
+		{
+			"amount": 0,
+			"avg_price": 0,
+			"create_date": 1405562100000,
+			"deal_amount": 0,
+			"order_id": 0,
+			"price": 0,
+			"status": 2,
+			"symbol": "btc_cny",
+			"type": "sell”
+		}
+	],
+	"page_length": 1,
+	"result": true,
+	"total": 3
+}
+]
+返回值说明
+current_page:当前页码
+orders:委托详细信息
+amount:委托数量
+avg_price:平均成交价
+create_date:委托时间
+deal_amount:成交数量
+order_id:订单ID
+price:委托价格
+status:-1:已撤销   0:未成交 1:部分成交 2:完全成交 4:撤单处理中
+type:buy_market:市价买入 / sell_market:市价卖出
+page_length:每页数据条数
+result:true代表成功返回
+
+*/
+
+func GetOrderHistory(symbol string, status uint32, curpage uint32, pagepercount uint32) *RespGetOrderHistory {
+	config := GetConfig()
+	req := CoinHttp{}
+	req.Init("GetOrderHistory", "order_history.do", &RespGetOrderHistory{})
+	req.AddParam(MakeParam("api_key", config.ApiKey))
+	req.AddParam(MakeParam("symbol", symbol))
+	req.AddParam(MakeParam("status", status))
+	req.AddParam(MakeParam("current_page", curpage))
+	req.AddParam(MakeParam("page_length", pagepercount))
+
+	var result interface{}
+	result = req.Post()
+	switch result := result.(type) {
+	default:
+		return nil
+	case *RespGetOrderHistory:
 		return result
 	}
 }

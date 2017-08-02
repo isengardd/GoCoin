@@ -104,7 +104,7 @@ func (this *CoinHttp) Post() interface{} {
 
 	if resp.StatusCode == 200 {
 		if data, err := ioutil.ReadAll(resp.Body); err == nil {
-			fmt.Printf("%s\n", data)
+			//fmt.Printf("%s\n", data)
 			err = json.Unmarshal([]byte(data), this.jsondata)
 			if err != nil {
 				log.Printf("%s Unmarshal error, %s\n", this.Msg(), err)

@@ -1,4 +1,8 @@
 {
     "api_key": "",
-    "secret_key": ""
+    "secret_key": "",
+	"sql_user": "",
+  	"sql_pwd": "",
+  	"sql_port": 
+
 }

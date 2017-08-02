@@ -1,0 +1,6 @@
+CREATE TABLE `order_data` (
+   `coin_type` varchar(32) NOT NULL,
+   `order_id` int(11) UNSIGNED NOT NULL DEFAULT '0',
+   `order_time` datetime(1) NOT NULL,	
+   PRIMARY KEY (`coin_type`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
