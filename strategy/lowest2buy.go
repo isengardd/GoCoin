@@ -84,7 +84,7 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 	if this.userInfo == nil {
 		return
 	}
-	fmt.Println(this.userInfo)
+	//fmt.Println(this.userInfo)
 	//获取市场最新数据
 	tick := coinapi.GetTicker(coinapi.LTC)
 	if tick == nil {
@@ -112,8 +112,8 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 			return
 		}
 
-		fmt.Printf("%v, position:%f, high:%f, cut:%f, current:%f\n", this.order, position,
-			high, cutPrice, curPrice)
+		//fmt.Printf("%v, position:%f, high:%f, cut:%f, current:%f\n", this.order, position,
+		//	high, cutPrice, curPrice)
 		if curPrice < cutPrice {
 			//卖出
 			coinapi.DoTrade(coinapi.LTC, coinapi.SELL_MARKET, 0, this.userInfo.Info.Funds.Free.GetLtc())
