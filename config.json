@@ -1,8 +1,8 @@
 {
-    "api_key": "507356dd-00bb-4679-ac27-cd657ef39900",
-    "secret_key": "84F542E33C501954455E3A55F197FFE7",
-    "sql_user": "root",
-    "sql_pwd": "369613",
-    "sql_port": 63306
+    "api_key": "",
+    "secret_key": "",
+    "sql_user": "",
+    "sql_pwd": "",
+    "sql_port": 
 
 }
