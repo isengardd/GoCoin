@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -23,7 +25,11 @@ var config CoinConfig
 var sqlconnect *sql.DB = nil
 
 func init() {
+	filePath, _ := exec.LookPath(os.Args[0])
+	dirPath := filepath.Dir(filePath)
+	os.Chdir(dirPath)
 	fmt.Println(os.Getwd())
+
 	content, error := ioutil.ReadFile("config.json")
 	if error != nil {
 		fmt.Printf("%v\n", error)
