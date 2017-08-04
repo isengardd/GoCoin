@@ -1,13 +1,43 @@
 package main
 
 import (
-	//"GoCoin/coinapi"
+	"GoCoin/coinapi"
 	"GoCoin/strategy"
-	//"fmt"
+	"fmt"
+	"time"
 	//"strconv"
+	//"log"
 )
 
 func main() {
+
+	var worker strategy.Lowest2buy
+	worker.Run()
+
+	//DoTest()
+
+	//	tick := coinapi.GetTicker(coinapi.LTC)
+	//	if tick == nil {
+	//		return
+	//	}
+	//	//计算目标建仓价
+	//	curPrice := tick.Tick.GetLast()
+	//	if curPrice == 0 {
+	//		return
+	//	}
+	//	if true {
+	//		orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, 0)
+	//		if orderId != 0 {
+	//			log.Printf("Buy %f\n", curPrice)
+	//			coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
+	//				coinapi.LTC, orderId))
+	//		} else {
+	//			log.Printf("OrderId is 0\n")
+	//		}
+	//	}
+}
+
+func DoTest() {
 	//	tick := coinapi.GetTicker(coinapi.LTC)
 	//	if tick != nil {
 	//		fmt.Printf("%v\n", tick)
@@ -58,13 +88,14 @@ func main() {
 	//	cancelResult := coinapi.CancelOrder(coinapi.LTC, orderId)
 	//	fmt.Println(cancelResult)
 
-	//	history := coinapi.GetOrderHistory(coinapi.LTC, 1, 1, 100)
-	//	if history != nil {
-	//		fmt.Printf("%v\n", history)
-	//	}
-	var worker strategy.Lowest2buy
-	worker.Run()
+	history := coinapi.GetOrderHistory(coinapi.LTC, 1, 1, 100)
+	if history != nil {
+		fmt.Printf("%v\n", history)
+	}
 
-	//	high := coinapi.GetHighestPrice(coinapi.LTC, 1501682028000)
-	//	fmt.Println(high)
+	since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - 3600001
+	high := coinapi.GetHighestPrice(coinapi.LTC, since)
+	fmt.Println(high)
+	fmt.Println(since)
+	fmt.Println(int64(time.Hour / time.Millisecond))
 }

@@ -1,7 +1,9 @@
 package coinapi
 
 import (
+	//	"fmt"
 	"sort"
+	"time"
 )
 
 type Float32Slice []float32
@@ -43,7 +45,15 @@ func GetNLowestPrice(symbol string, n uint32, intv string, size int32) []float32
 
 func GetHighestPrice(symbol string, since int64) float32 {
 
-	kline := GetKline(symbol, "1hour", -1, since)
+	var intv string
+	nowTime := time.Now().UnixNano() / int64(time.Millisecond)
+	if nowTime-since < int64(time.Hour/time.Millisecond) {
+		intv = "1min"
+	} else {
+		intv = "1hour"
+	}
+
+	kline := GetKline(symbol, intv, -1, since)
 	if kline == nil || len(*kline) == 0 {
 		return 0
 	}

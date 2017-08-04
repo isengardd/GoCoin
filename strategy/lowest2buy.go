@@ -3,6 +3,7 @@ package strategy
 import (
 	"GoCoin/coinapi"
 	"fmt"
+	"log"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -31,14 +32,20 @@ func (this *OrderRecord) Clear() {
 	this.orderId = 0
 	this.orderTime = 0
 
-	coinapi.GetDB().Query(fmt.Sprintf("DELETE FROM order_data WHERE coin_type='%s'", coinapi.LTC))
+	rows, err := coinapi.GetDB().Query(fmt.Sprintf("DELETE FROM order_data WHERE coin_type='%s'", coinapi.LTC))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	defer rows.Close()
 }
 
 func (this *OrderRecord) LoadOrder() {
 	this.symbol = coinapi.LTC
 	rows, err := coinapi.GetDB().Query(fmt.Sprintf("SELECT order_id,order_time FROM order_data WHERE coin_type='%s'", this.symbol))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -49,7 +56,7 @@ func (this *OrderRecord) LoadOrder() {
 		var orderTime string
 		err := rows.Scan(&orderId, &orderTime)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 		this.orderId = orderId
@@ -112,10 +119,11 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 			return
 		}
 
-		//fmt.Printf("%v, position:%f, high:%f, cut:%f, current:%f\n", this.order, position,
-		//	high, cutPrice, curPrice)
+		//		fmt.Printf("%v, position:%f, high:%f, cut:%f, current:%f\n", this.order, position,
+		//			high, cutPrice, curPrice)
 		if curPrice < cutPrice {
 			//卖出
+			log.Printf("sell: price=%f, high=%f, cut=%f, positin=%f\n", curPrice, high, cutPrice, position)
 			coinapi.DoTrade(coinapi.LTC, coinapi.SELL_MARKET, 0, this.userInfo.Info.Funds.Free.GetLtc())
 		}
 
@@ -136,8 +144,15 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 		if curPrice < lowPrice[1] {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
-				coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
+				log.Printf("Buy %f\n", curPrice)
+				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
 					coinapi.LTC, orderId))
+				if err != nil {
+					log.Println(err)
+				}
+				defer rows.Close()
+			} else {
+				log.Printf("OrderId is 0\n")
 			}
 		}
 	}
