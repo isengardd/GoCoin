@@ -39,6 +39,11 @@ func (this *Ticker) GetLast() float32 {
 	return float32(Last)
 }
 
+func (this *Ticker) GetSell() float32 {
+	sell, _ := strconv.ParseFloat(this.Sell, 32)
+	return float32(sell)
+}
+
 type RespDepth struct {
 	Asks [][2]float32 `json:"asks"` //卖方深度
 	Bids [][2]float32 `json:"bids"` //买方深度

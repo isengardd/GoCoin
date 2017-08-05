@@ -84,7 +84,7 @@ func (this *Lowest2buy) Run() {
 }
 
 func (this *Lowest2buy) DoStrategy(t *time.Timer) {
-	defer t.Reset(time.Second)
+	defer t.Reset(500 * time.Millisecond)
 
 	//获取用户信息
 	this.userInfo = coinapi.GetUserInfo()
@@ -140,11 +140,15 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 		if curPrice == 0 {
 			return
 		}
-		//fmt.Printf("lowprice : %v\n", lowPrice)
-		if curPrice < lowPrice[1] {
+
+		//这里防止卖1价格过高
+		sell1Price := tick.Tick.GetSell()
+		//fmt.Printf("curprice:%f, lowprice : %v, sell1price : %v\n", curPrice, lowPrice, sell1Price)
+		if curPrice < lowPrice[1] &&
+			sell1Price*(1-CUT_RATE/2) < curPrice {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
-				log.Printf("Buy %f\n", curPrice)
+				log.Printf("Buy %f, lowprice:%f, sell1price : %v\n", curPrice, lowPrice[1], sell1Price)
 				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
 					coinapi.LTC, orderId))
 				if err != nil {
