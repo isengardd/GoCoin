@@ -16,6 +16,10 @@ func main() {
 
 	//DoTest()
 
+	//	lowPrice := coinapi.GetNLowestPrice(coinapi.LTC, 2, "30min", 7)
+	//	if lowPrice != nil {
+	//		fmt.Println(lowPrice)
+	//	}
 	//	tick := coinapi.GetTicker(coinapi.LTC)
 	//	if tick == nil {
 	//		return

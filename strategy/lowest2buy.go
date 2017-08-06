@@ -141,14 +141,16 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 			return
 		}
 
-		//这里防止卖1价格过高
+		//1.这里防止卖1价格过高,导致频繁买卖
+		//2.防止当前价格过低，不能低于此前的最低价
 		sell1Price := tick.Tick.GetSell()
 		//fmt.Printf("curprice:%f, lowprice : %v, sell1price : %v\n", curPrice, lowPrice, sell1Price)
 		if curPrice < lowPrice[1] &&
-			sell1Price*(1-CUT_RATE/2) < curPrice {
+			sell1Price*(1-CUT_RATE/2) < curPrice &&
+			curPrice > lowPrice[0] {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
-				log.Printf("Buy %f, lowprice:%f, sell1price : %v\n", curPrice, lowPrice[1], sell1Price)
+				log.Printf("Buy %f, lowprice:%v, sell1price : %v\n", curPrice, lowPrice, sell1Price)
 				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
 					coinapi.LTC, orderId))
 				if err != nil {
