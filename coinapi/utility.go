@@ -66,3 +66,67 @@ func GetHighestPrice(symbol string, since int64) float32 {
 	}
 	return maxprice
 }
+
+func GetLowHighPrice(symbol string, since int64) (RespKline, RespKline) {
+	var intv string
+	nowTime := time.Now().UnixNano() / int64(time.Millisecond)
+	if nowTime-since < int64(time.Hour/time.Millisecond) {
+		intv = "1min"
+	} else if nowTime-since > int64(time.Hour/time.Millisecond*24) {
+		intv = "1day"
+	} else {
+		intv = "1hour"
+	}
+
+	kline := GetKline(symbol, intv, -1, since)
+	if kline == nil || len(*kline) == 0 {
+		return RespKline{}, RespKline{}
+	}
+
+	var maxprice RespKline
+	maxprice.High = 0
+	var lowprice RespKline
+	lowprice.Low = 999999
+	for _, val := range *kline {
+		if val.High > maxprice.High {
+			maxprice = val
+		}
+
+		if val.Low < lowprice.Low {
+			lowprice = val
+		}
+	}
+	return lowprice, maxprice
+}
+
+func GetMaList(symbol string, intv string, avglist []int) map[uint][]float32 {
+	if len(avglist) == 0 {
+		return nil
+	}
+
+	sort.Ints(avglist)
+	maxAvg := avglist[len(avglist)-1]
+
+	kline := GetKline(symbol, intv, int32(maxAvg+1), 0)
+	if kline == nil || len(*kline) < int(maxAvg+1) {
+		return nil
+	}
+
+	var sum float32 = 0
+	var sumpre float32 = 0
+	var avgcount int = 0
+	malist := make(map[uint][]float32, 0)
+	for idx := len(*kline) - 1; idx > 0; idx-- {
+		sum += (*kline)[idx].Close
+		sumpre += (*kline)[idx-1].Close
+
+		avgcount++
+		if avgcount == avglist[len(malist)] {
+			malist[uint(avgcount)] = make([]float32, 0)
+			malist[uint(avgcount)] = append(malist[uint(avgcount)], sumpre/float32(avgcount))
+			malist[uint(avgcount)] = append(malist[uint(avgcount)], sum/float32(avgcount))
+		}
+	}
+
+	return malist
+}

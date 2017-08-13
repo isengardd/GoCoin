@@ -18,6 +18,8 @@ const (
 	SELL          = "sell"
 	BUY_MARKET    = "buy_market"
 	SELL_MARKET   = "sell_market"
+	SIGNAL_BUY    = 1
+	SIGNAL_SELL   = 2
 )
 
 type RespTicker struct {
@@ -39,9 +41,16 @@ func (this *Ticker) GetLast() float32 {
 	return float32(Last)
 }
 
+//获取卖1价
 func (this *Ticker) GetSell() float32 {
 	sell, _ := strconv.ParseFloat(this.Sell, 32)
 	return float32(sell)
+}
+
+//获取买1价
+func (this *Ticker) GetBuy() float32 {
+	buy, _ := strconv.ParseFloat(this.Buy, 32)
+	return float32(buy)
 }
 
 type RespDepth struct {
@@ -93,6 +102,11 @@ type MoneyData struct {
 
 func (this *MoneyData) GetLtc() float32 {
 	freecount, _ := strconv.ParseFloat(this.Ltc, 32)
+	return float32(freecount)
+}
+
+func (this *MoneyData) GetCny() float32 {
+	freecount, _ := strconv.ParseFloat(this.Cny, 32)
 	return float32(freecount)
 }
 

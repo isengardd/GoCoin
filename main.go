@@ -10,15 +10,13 @@ import (
 )
 
 func main() {
-
-	var worker strategy.Lowest2buy
-	worker.Run()
-
-	//DoTest()
-
+	Run()
+	//TestMaList()
+	//TestLowHighPrice()
+	//TestMaList()
 	//	lowPrice := coinapi.GetNLowestPrice(coinapi.LTC, 2, "30min", 7)
 	//	if lowPrice != nil {
-	//		fmt.Println(lowPrice)
+	//		fmt.Printf("%v\n", lowPrice)
 	//	}
 	//	tick := coinapi.GetTicker(coinapi.LTC)
 	//	if tick == nil {
@@ -39,6 +37,10 @@ func main() {
 	//			log.Printf("OrderId is 0\n")
 	//		}
 	//	}
+}
+func Run() {
+	var worker strategy.IntervalBuy
+	worker.Run()
 }
 
 func DoTest() {
@@ -92,6 +94,9 @@ func DoTest() {
 	//	cancelResult := coinapi.CancelOrder(coinapi.LTC, orderId)
 	//	fmt.Println(cancelResult)
 
+}
+
+func TestOrderHistory() {
 	history := coinapi.GetOrderHistory(coinapi.LTC, 1, 1, 100)
 	if history != nil {
 		fmt.Printf("%v\n", history)
@@ -102,4 +107,30 @@ func DoTest() {
 	fmt.Println(high)
 	fmt.Println(since)
 	fmt.Println(int64(time.Hour / time.Millisecond))
+}
+
+func TestMaList() {
+	var avglist = []int{5, 10, 20, 60}
+	malistall := coinapi.GetMaList(coinapi.LTC, "15min", avglist)
+	if malistall != nil {
+		fmt.Printf("MA5,10,20,60: %v\n", malistall)
+		fmt.Printf("MA10: %v\n", malistall[10])
+		fmt.Printf("MA20: %v\n", malistall[20])
+	}
+
+	ma5list := coinapi.GetMaList(coinapi.LTC, "15min", []int{5})
+	if ma5list != nil {
+		fmt.Printf("MA5: %v\n", ma5list)
+	}
+
+	ma60list := coinapi.GetMaList(coinapi.LTC, "15min", []int{60})
+	if ma60list != nil {
+		fmt.Printf("MA60: %v\n", ma60list)
+	}
+}
+
+func TestLowHighPrice() {
+	since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - int64(time.Hour/time.Millisecond)*24*2
+	low, high := coinapi.GetLowHighPrice(coinapi.LTC, since)
+	fmt.Printf("low:%v, high:%v\n", low, high)
 }
