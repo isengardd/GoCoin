@@ -72,8 +72,6 @@ func GetLowHighPrice(symbol string, since int64) (RespKline, RespKline) {
 	nowTime := time.Now().UnixNano() / int64(time.Millisecond)
 	if nowTime-since < int64(time.Hour/time.Millisecond) {
 		intv = "1min"
-	} else if nowTime-since > int64(time.Hour/time.Millisecond*24) {
-		intv = "1day"
 	} else {
 		intv = "1hour"
 	}

@@ -101,7 +101,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 		} else {
 			highestPrice := coinapi.GetHighestPrice(coinapi.LTC, this.order.orderTime)
 			if highestPrice == 0 {
-				log.Println("highest price is 0")
+				//log.Println("highest price is 0")
 				return
 			}
 
@@ -111,7 +111,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 			if maxProfit < 0.02 {
 
 			} else if maxProfit < 0.03 {
-				if curProfit < maxProfit*0.4 {
+				if curProfit < maxProfit*0.25 {
 					bSell = true
 				}
 			} else if maxProfit < 0.05 {
@@ -174,7 +174,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 
 		}
 
-		since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - int64(time.Hour/time.Millisecond)*24*2
+		since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - int64(time.Hour/time.Millisecond)*36
 		low, high := coinapi.GetLowHighPrice(coinapi.LTC, since)
 		if low.Low == 0 || high.High == 0 || low.Low > high.High {
 			log.Printf("low or high price error, low=%v, high=%v\n", low, high)
@@ -215,13 +215,13 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 
 func (this *IntervalBuy) GetSignal(curPrice float32, low coinapi.RespKline, high coinapi.RespKline) int {
 	diff := high.High - low.Low
-	if diff < 0.04*curPrice {
+	if diff < 0.035*curPrice {
 		return 0
 	}
 
 	nowTime := int64(time.Now().UnixNano() / int64(time.Millisecond))
 	//最低价不能是8小时内产生的
-	if low.Date > uint64(nowTime-int64(time.Hour/time.Millisecond)*8) {
+	if low.Date > uint64(nowTime-int64(time.Hour/time.Millisecond)*6) {
 		return 0
 	}
 
