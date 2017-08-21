@@ -5,6 +5,7 @@ import (
 	"GoCoin/strategy"
 	"fmt"
 	"time"
+	//"unsafe"
 	//"strconv"
 	//"log"
 )
@@ -13,6 +14,8 @@ func main() {
 	Run()
 	//TestMaList()
 	//TestLowHighPrice()
+	//TestMACD()
+	//TestRSI()
 	//TestMaList()
 	//	lowPrice := coinapi.GetNLowestPrice(coinapi.LTC, 2, "30min", 7)
 	//	if lowPrice != nil {
@@ -39,7 +42,7 @@ func main() {
 	//	}
 }
 func Run() {
-	var worker strategy.IntervalBuy
+	var worker strategy.MacdRsiBuy
 	worker.Run()
 }
 
@@ -130,7 +133,42 @@ func TestMaList() {
 }
 
 func TestLowHighPrice() {
-	since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - int64(time.Hour/time.Millisecond)*24*2
+	since := int64(time.Now().UnixNano()/int64(time.Millisecond)) - int64(time.Hour/time.Millisecond)*36
 	low, high := coinapi.GetLowHighPrice(coinapi.LTC, since)
 	fmt.Printf("low:%v, high:%v\n", low, high)
+}
+
+func TestMACD() {
+	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
+	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+		return
+	}
+
+	// 按照时间降序
+	for i := 0; i < len(*kline)/2; i++ {
+		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
+	}
+
+	curmacd := coinapi.GetMACDBar(*kline)
+	premacd := coinapi.GetMACDBar((*kline)[1:])
+	fmt.Printf("curmacd=%f,premacd=%f\n", curmacd, premacd)
+}
+
+func TestRSI() {
+	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
+	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+		return
+	}
+
+	// 按照时间降序
+	for i := 0; i < len(*kline)/2; i++ {
+		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
+	}
+	rsi := coinapi.GetRSI((*kline), coinapi.N4)
+	fmt.Printf("currsi4=%f\n", rsi)
+
+	for i := 1; i < 30; i++ {
+		rsi = coinapi.GetRSI((*kline)[i:], coinapi.N4)
+		fmt.Printf("prersi4_%d=%f\n", i, rsi)
+	}
 }
