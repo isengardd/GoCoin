@@ -10,17 +10,17 @@ import (
 )
 
 var (
-	RSI_LOW_LINE   = float32(21)
-	RSI_HIGH_LINE  = float32(79)
+	RSI_LOW_LINE   = float32(20)
+	RSI_HIGH_LINE  = float32(80)
 	RSI_LOCK_RANGE = float32(2)
 )
 
 type MacdRsiBuy struct {
-	userInfo   *coinapi.RespUserInfo
-	order      OrderRecord
-	coolTime   int64
-	lowestRSI  float32
-	highestRSI float32
+	userInfo *coinapi.RespUserInfo
+	order    OrderRecord
+	coolTime int64
+	//lowestRSI  float32
+	//highestRSI float32
 }
 
 func (this *MacdRsiBuy) Init() {
@@ -29,8 +29,8 @@ func (this *MacdRsiBuy) Init() {
 		this.coolTime = this.order.orderTime + 1800*1000
 	}
 
-	this.lowestRSI = 0
-	this.highestRSI = 0
+	//this.lowestRSI = 0
+	//this.highestRSI = 0
 }
 
 func (this *MacdRsiBuy) Run() {
@@ -99,8 +99,8 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 		curPrice := tick.Tick.GetLast()
 		var bSell = false
 		var rsi = float32(0)
-		//如果价格在仓位以下2%,卖出
-		if curPrice <= position*0.98 {
+		//如果价格在仓位以下1.5%,卖出
+		if curPrice <= position*0.985 {
 			bSell = true
 		} else {
 			//如果价格正常，取rsi值
@@ -120,19 +120,11 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 				return
 			}
 
+			//fmt.Printf("curprice=%f,ris=%f\n", curPrice, rsi)
 			//确认是否是超买行情
 			if rsi >= RSI_HIGH_LINE {
-				if rsi > this.highestRSI {
-					this.highestRSI = rsi
-				}
-			}
-
-			if this.highestRSI == 0 {
-				return
-			}
-
-			if this.highestRSI-RSI_LOCK_RANGE >= rsi {
 				//卖出
+				log.Printf("sell: kline[0]=%v\n", (*kline)[0])
 				bSell = true
 			} else {
 				//等待行情见顶
@@ -141,8 +133,8 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 		}
 
 		if bSell {
-			log.Printf("sell: price=%f, rsi=%f, highestrsi=%f\n",
-				curPrice, rsi, this.highestRSI)
+			log.Printf("sell: price=%f, rsi=%f\n",
+				curPrice, rsi)
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.SELL, curPrice-0.01, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
 				rows, err := coinapi.GetDB().Query(fmt.Sprintf("UPDATE order_data SET order_id=%d,order_type='%s',order_time_sell=NOW() WHERE order_id=%d",
@@ -168,7 +160,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 			} else if this.order.orderType == coinapi.BUY {
 				//todo: 如果是买单，一直未成交也需要处理
 				nowTime := int64(time.Now().UnixNano() / int64(time.Millisecond))
-				if nowTime-this.order.orderTime > 30*1000 {
+				if nowTime-this.order.orderTime > 180*1000 {
 					coinapi.CancelOrder(coinapi.LTC, this.order.orderId)
 					log.Printf("order delaytime=%d(ms), orderid=%d, canceled\n",
 						nowTime-this.order.orderTime, this.order.orderId)
@@ -205,24 +197,13 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 
 		//当前RSI小于超卖线
 		if rsi <= RSI_LOW_LINE {
-			if rsi < this.lowestRSI || this.lowestRSI == 0 {
-				this.lowestRSI = rsi
-			}
-		}
-
-		//不处于超卖行情中
-		if this.lowestRSI == 0 {
-			return
-		}
-
-		if this.lowestRSI+RSI_LOCK_RANGE <= rsi {
 			//止住跌势，可以买入
 			cny := this.userInfo.Info.Funds.Free.GetCny()
 			buycount := float32(int32((cny/curPrice)*float32(10))) / float32(10)
 			if buycount > 0.2 {
-				orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY, curPrice, buycount)
+				orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY, curPrice+0.01, buycount)
 				if orderId != 0 {
-					log.Printf("Buy %f, rsi:%v, lowestrsi:%v\n", curPrice, rsi, this.lowestRSI)
+					log.Printf("Buy %f, rsi:%v, kline[0]=%v\n", curPrice, rsi, (*kline)[0])
 					rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_type,order_time,order_time_sell,low_price,high_price) VALUES('%s', %d, '%s', NOW(), NOW(), 0, 0)",
 						coinapi.LTC, orderId, coinapi.BUY))
 					if err != nil {
@@ -240,9 +221,9 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 				}
 			}
 
-			//不论是否成交，这里已经完成一次交易逻辑
-			this.lowestRSI = 0
-			this.highestRSI = 0
+			//			//不论是否成交，这里已经完成一次交易逻辑
+			//			this.lowestRSI = 0
+			//			this.highestRSI = 0
 		} else {
 			//还在下跌趋势中，持续观望
 			return

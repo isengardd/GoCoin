@@ -127,7 +127,7 @@ type RespGetOrderInfo struct {
 
 type OrdersInfo struct {
 	OrderId    uint32  `json:"order_id"`
-	Status     uint32  `json:"status"`
+	Status     int32   `json:"status"`
 	Symbol     string  `json:"symbol"`
 	Type       string  `json:"type"`
 	Price      float32 `json:"price"`

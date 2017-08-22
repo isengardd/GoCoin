@@ -12,6 +12,7 @@ import (
 
 func main() {
 	Run()
+	//TestOrderHistory()
 	//TestMaList()
 	//TestLowHighPrice()
 	//TestMACD()
