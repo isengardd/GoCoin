@@ -217,6 +217,9 @@ func GetEMA(kline []RespKline, count int) float32 {
 	} else if count == N7 {
 		raList = raList7
 		a = a7
+	} else if count == N6 {
+		raList = raList6
+		a = a6
 	} else {
 		return 0
 	}
@@ -290,6 +293,9 @@ const (
 	N4 = 4
 	a4 = float32(1) / float32(4) //这里首项系数是1/n
 	k4 = float32(F) * 5
+	N6 = 6
+	a6 = float32(1) / float32(6) //这里首项系数是1/n
+	k6 = float32(F) * 7
 	N7 = 7
 	a7 = float32(1) / float32(7) //这里首项系数是1/n
 	k7 = float32(F) * 8
@@ -297,6 +303,7 @@ const (
 )
 
 var raList4 []float32 = nil
+var raList6 []float32 = nil
 var raList7 []float32 = nil
 
 func init() {
@@ -312,6 +319,13 @@ func init() {
 	raList7[0] = 1
 	for i := 1; i < len(raList7); i++ {
 		raList7[i] = raList7[i-1] * (1 - a7)
+	}
+
+	listlen = k6
+	raList6 = make([]float32, int32(listlen))
+	raList6[0] = 1
+	for i := 1; i < len(raList6); i++ {
+		raList6[i] = raList6[i-1] * (1 - a6)
 	}
 }
 

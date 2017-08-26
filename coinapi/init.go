@@ -45,6 +45,8 @@ func init() {
 		fmt.Println(err)
 	} else {
 		sqlconnect = con
+		//设置连接不超时
+		sqlconnect.SetConnMaxLifetime(0)
 	}
 
 }
