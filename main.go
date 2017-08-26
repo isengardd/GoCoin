@@ -12,6 +12,7 @@ import (
 
 func main() {
 	Run()
+	//TestRSISiumulate()
 	//TestOrderHistory()
 	//TestMaList()
 	//TestLowHighPrice()
@@ -171,5 +172,38 @@ func TestRSI() {
 	for i := 1; i < 30; i++ {
 		rsi = coinapi.GetRSI((*kline)[i:], coinapi.N4)
 		fmt.Printf("prersi4_%d=%f\n", i, rsi)
+	}
+}
+
+func TestRSISiumulate() {
+	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
+	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+		return
+	}
+
+	// 按照时间降序
+	for i := 0; i < len(*kline)/2; i++ {
+		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
+	}
+
+	the_time, _ := time.ParseInLocation("2006-01-02 15:04:05", "2017-08-26 04:00:00", time.Local)
+
+	//查找要修改的时间
+	for i := 1; i < coinapi.MACD_KLINE_MAX; i++ {
+		if (*kline)[i].Date == uint64(the_time.Unix())*1000 {
+			rsi4 := coinapi.GetRSI((*kline)[i:], coinapi.N4)
+			rsi6 := coinapi.GetRSI((*kline)[i:], coinapi.N6)
+			fmt.Printf("origin rsi4=%f, rsi6=%f\n", rsi4, rsi6)
+			(*kline)[i].Close = 338.85
+			fmt.Printf("kline=%v\n", (*kline)[i])
+			rsi4 = coinapi.GetRSI((*kline)[i:], coinapi.N4)
+			rsi6 = coinapi.GetRSI((*kline)[i:], coinapi.N6)
+			fmt.Printf("dot rsi4=%f, rsi6=%f\n", rsi4, rsi6)
+
+			fmt.Printf("pre kline=%v\n", (*kline)[i+1])
+			rsi4 = coinapi.GetRSI((*kline)[i+1:], coinapi.N4)
+			rsi6 = coinapi.GetRSI((*kline)[i+1:], coinapi.N6)
+			fmt.Printf("pre rsi4=%f, rsi6=%f\n", rsi4, rsi6)
+		}
 	}
 }
