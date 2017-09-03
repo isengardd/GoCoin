@@ -220,6 +220,9 @@ func GetEMA(kline []RespKline, count int) float32 {
 	} else if count == N6 {
 		raList = raList6
 		a = a6
+	} else if count == N8 {
+		raList = raList8
+		a = a8
 	} else {
 		return 0
 	}
@@ -299,12 +302,17 @@ const (
 	N7 = 7
 	a7 = float32(1) / float32(7) //这里首项系数是1/n
 	k7 = float32(F) * 8
+	N8 = 8
+	a8 = float32(1) / float32(8)
+	k8 = float32(F) * 9
+
 	// todo:如果有跟MACD重复的天数，需要重构GetEMA的代码
 )
 
 var raList4 []float32 = nil
 var raList6 []float32 = nil
 var raList7 []float32 = nil
+var raList8 []float32 = nil
 
 func init() {
 	listlen := k4
@@ -326,6 +334,13 @@ func init() {
 	raList6[0] = 1
 	for i := 1; i < len(raList6); i++ {
 		raList6[i] = raList6[i-1] * (1 - a6)
+	}
+
+	listlen = k8
+	raList8 = make([]float32, int32(listlen))
+	raList8[0] = 1
+	for i := 1; i < len(raList8); i++ {
+		raList8[i] = raList8[i-1] * (1 - a8)
 	}
 }
 

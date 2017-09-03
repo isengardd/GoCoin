@@ -106,7 +106,7 @@ func (this *Lowest2buy) DoStrategy(t *time.Timer) {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
 				log.Printf("Buy %f, lowprice:%v, sell1price : %v\n", curPrice, lowPrice, sell1Price)
-				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
+				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_record(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
 					coinapi.LTC, orderId))
 				if err != nil {
 					log.Println(err)

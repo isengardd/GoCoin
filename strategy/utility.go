@@ -23,16 +23,31 @@ type OrderRecord struct {
 	highPrice     float32
 }
 
+type OrderData struct {
+	symbol    string
+	orderId   uint32
+	orderType string
+	orderTime int64
+	count     float32
+	price     float32
+}
+
 const (
 	STATE_NONE       = 0
 	STATE_WAIT_RSI_1 = 1 // 等待RSI(4) >= 85 或者 RSI(6) >= 80
 	STATE_WAIT_RSI_2 = 2 // 等待RSI(6) <= 20
 	STATE_WAIT_RSI_3 = 3 // 等待RSI(4) > 80
+
+	//////////////////////////////////////////////////////////
+	STATE_WAIT_BUY  = 1
+	STATE_BUY_IN    = 2
+	STATE_WAIT_SELL = 3
+	STATE_SELL_OUT  = 4
 )
 
 func (this *OrderRecord) Clear() {
 
-	rows, err := coinapi.GetDB().Query(fmt.Sprintf("DELETE FROM order_data WHERE coin_type='%s' AND order_id=%d", coinapi.LTC, this.orderId))
+	rows, err := coinapi.GetDB().Query(fmt.Sprintf("DELETE FROM order_record WHERE coin_type='%s' AND order_id=%d", coinapi.LTC, this.orderId))
 	if err != nil {
 		log.Println(err)
 		return
@@ -51,7 +66,7 @@ func (this *OrderRecord) Clear() {
 
 func (this *OrderRecord) LoadOrder() {
 	this.symbol = coinapi.LTC
-	rows, err := coinapi.GetDB().Query(fmt.Sprintf("SELECT order_id,order_type,order_time,order_time_sell, low_price,high_price FROM order_data WHERE coin_type='%s'", this.symbol))
+	rows, err := coinapi.GetDB().Query(fmt.Sprintf("SELECT order_id,order_type,order_time,order_time_sell, low_price,high_price FROM order_record WHERE coin_type='%s'", this.symbol))
 	if err != nil {
 		log.Println(err)
 		return

@@ -36,7 +36,7 @@ func main() {
 	//		orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY_MARKET, curPrice, 0)
 	//		if orderId != 0 {
 	//			log.Printf("Buy %f\n", curPrice)
-	//			coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
+	//			coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_record(coin_type,order_id,order_time) VALUES('%s', %d, NOW())",
 	//				coinapi.LTC, orderId))
 	//		} else {
 	//			log.Printf("OrderId is 0\n")
@@ -44,7 +44,7 @@ func main() {
 	//	}
 }
 func Run() {
-	var worker strategy.MacdRsiBuy
+	var worker strategy.RsiBuy
 	worker.Run()
 }
 
@@ -186,24 +186,24 @@ func TestRSISiumulate() {
 		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 	}
 
-	the_time, _ := time.ParseInLocation("2006-01-02 15:04:05", "2017-08-26 04:00:00", time.Local)
+	the_time, _ := time.ParseInLocation("2006-01-02 15:04:05", "2017-09-03 20:45:00", time.Local)
 
 	//查找要修改的时间
 	for i := 1; i < coinapi.MACD_KLINE_MAX; i++ {
 		if (*kline)[i].Date == uint64(the_time.Unix())*1000 {
 			rsi4 := coinapi.GetRSI((*kline)[i:], coinapi.N4)
-			rsi6 := coinapi.GetRSI((*kline)[i:], coinapi.N6)
-			fmt.Printf("origin rsi4=%f, rsi6=%f\n", rsi4, rsi6)
-			(*kline)[i].Close = 338.85
+			rsi8 := coinapi.GetRSI((*kline)[i:], coinapi.N8)
+			fmt.Printf("origin rsi4=%f, rsi8=%f\n", rsi4, rsi8)
+			(*kline)[i].Close = 503.00
 			fmt.Printf("kline=%v\n", (*kline)[i])
 			rsi4 = coinapi.GetRSI((*kline)[i:], coinapi.N4)
-			rsi6 = coinapi.GetRSI((*kline)[i:], coinapi.N6)
-			fmt.Printf("dot rsi4=%f, rsi6=%f\n", rsi4, rsi6)
+			rsi8 = coinapi.GetRSI((*kline)[i:], coinapi.N8)
+			fmt.Printf("dot rsi4=%f, rsi8=%f\n", rsi4, rsi8)
 
 			fmt.Printf("pre kline=%v\n", (*kline)[i+1])
 			rsi4 = coinapi.GetRSI((*kline)[i+1:], coinapi.N4)
-			rsi6 = coinapi.GetRSI((*kline)[i+1:], coinapi.N6)
-			fmt.Printf("pre rsi4=%f, rsi6=%f\n", rsi4, rsi6)
+			rsi8 = coinapi.GetRSI((*kline)[i+1:], coinapi.N8)
+			fmt.Printf("pre rsi4=%f, rsi8=%f\n", rsi4, rsi8)
 		}
 	}
 }

@@ -85,7 +85,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.SELL, curPrice-0.01, this.userInfo.Info.Funds.Free.GetLtc())
 			if orderId != 0 {
 
-				rows, err := coinapi.GetDB().Query(fmt.Sprintf("UPDATE order_data SET order_id=%d,order_type='%s',order_time_sell=NOW() WHERE order_id=%d",
+				rows, err := coinapi.GetDB().Query(fmt.Sprintf("UPDATE order_record SET order_id=%d,order_type='%s',order_time_sell=NOW() WHERE order_id=%d",
 					orderId, coinapi.SELL, this.order.orderId))
 				if err != nil {
 					log.Println(err)
@@ -141,7 +141,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 					curPrice, this.order.lowPrice, this.order.highPrice, maxProfit, curProfit)
 				orderId := coinapi.DoTrade(coinapi.LTC, coinapi.SELL, curPrice-0.01, this.userInfo.Info.Funds.Free.GetLtc())
 				if orderId != 0 {
-					rows, err := coinapi.GetDB().Query(fmt.Sprintf("UPDATE order_data SET order_id=%d,order_type='%s',order_time_sell=NOW() WHERE order_id=%d",
+					rows, err := coinapi.GetDB().Query(fmt.Sprintf("UPDATE order_record SET order_id=%d,order_type='%s',order_time_sell=NOW() WHERE order_id=%d",
 						orderId, coinapi.SELL, this.order.orderId))
 					if err != nil {
 						log.Println(err)
@@ -193,7 +193,7 @@ func (this *IntervalBuy) DoStrategy(t *time.Timer) {
 			orderId := coinapi.DoTrade(coinapi.LTC, coinapi.BUY, curPrice, buycount)
 			if orderId != 0 {
 				log.Printf("Buy %f, lowprice:%v, highprice : %v\n", curPrice, low, high)
-				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_data(coin_type,order_id,order_type,order_time,order_time_sell,low_price,high_price) VALUES('%s', %d, '%s', NOW(), NOW(), %f, %f)",
+				rows, err := coinapi.GetDB().Query(fmt.Sprintf("INSERT INTO order_record(coin_type,order_id,order_type,order_time,order_time_sell,low_price,high_price) VALUES('%s', %d, '%s', NOW(), NOW(), %f, %f)",
 					coinapi.LTC, orderId, coinapi.BUY, low.Low, high.High))
 				if err != nil {
 					log.Println(err)
