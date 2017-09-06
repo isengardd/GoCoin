@@ -223,6 +223,9 @@ func GetEMA(kline []RespKline, count int) float32 {
 	} else if count == N8 {
 		raList = raList8
 		a = a8
+	} else if count == N13 {
+		raList = raList13
+		a = a13
 	} else {
 		return 0
 	}
@@ -293,18 +296,21 @@ RSI: 相对强弱指数（Relative Strength Index）；
 考虑n=4(10,80)和n=7(20,80)两种
 ////////////////////////////////////////*/
 const (
-	N4 = 4
-	a4 = float32(1) / float32(4) //这里首项系数是1/n
-	k4 = float32(F) * 5
-	N6 = 6
-	a6 = float32(1) / float32(6) //这里首项系数是1/n
-	k6 = float32(F) * 7
-	N7 = 7
-	a7 = float32(1) / float32(7) //这里首项系数是1/n
-	k7 = float32(F) * 8
-	N8 = 8
-	a8 = float32(1) / float32(8)
-	k8 = float32(F) * 9
+	N4  = 4
+	a4  = float32(1) / float32(4) //这里首项系数是1/n
+	k4  = float32(F) * 5
+	N6  = 6
+	a6  = float32(1) / float32(6) //这里首项系数是1/n
+	k6  = float32(F) * 7
+	N7  = 7
+	a7  = float32(1) / float32(7) //这里首项系数是1/n
+	k7  = float32(F) * 8
+	N8  = 8
+	a8  = float32(1) / float32(8)
+	k8  = float32(F) * 9
+	N13 = 13
+	a13 = float32(1) / float32(13)
+	k13 = float32(F) * 14
 
 	// todo:如果有跟MACD重复的天数，需要重构GetEMA的代码
 )
@@ -313,6 +319,7 @@ var raList4 []float32 = nil
 var raList6 []float32 = nil
 var raList7 []float32 = nil
 var raList8 []float32 = nil
+var raList13 []float32 = nil
 
 func init() {
 	listlen := k4
@@ -341,6 +348,13 @@ func init() {
 	raList8[0] = 1
 	for i := 1; i < len(raList8); i++ {
 		raList8[i] = raList8[i-1] * (1 - a8)
+	}
+
+	listlen = k13
+	raList13 = make([]float32, int32(listlen))
+	raList13[0] = 1
+	for i := 1; i < len(raList13); i++ {
+		raList13[i] = raList13[i-1] * (1 - a13)
 	}
 }
 

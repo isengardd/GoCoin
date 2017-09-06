@@ -12,6 +12,7 @@ import (
 const (
 	FLAG_RSI_LARGE_50   = 1 << 0
 	FLAG_SELL_IMMEDIATE = 1 << 1
+	FLAG_RSI_LARGE_40   = 1 << 2
 )
 
 var (
@@ -229,7 +230,7 @@ func (this *RsiBuy) OnWaitBuy() {
 
 func (this *RsiBuy) OnBuyIn() {
 	// 15%, 25%, 35%, 25% 每6分钟
-	var buyrate = [4]float32{0.15, 0.25, 0.35, 0.25}
+	var buyrate = [4]float32{0.15, 0.30, 0.35, 0.20}
 	for idx := int(0); idx < len(buyrate); idx++ {
 		sum := float32(0)
 		for innerIdx := idx; innerIdx < len(buyrate); innerIdx++ {
@@ -297,6 +298,8 @@ func (this *RsiBuy) OnWaitSell() {
 
 	if rsi >= 50 {
 		this.BindFlag(FLAG_RSI_LARGE_50)
+	} else if rsi >= 40 {
+		this.BindFlag(FLAG_RSI_LARGE_40)
 	}
 
 	position := this.GetAvgPosition()
@@ -306,19 +309,26 @@ func (this *RsiBuy) OnWaitSell() {
 
 	//低于成本价3%，卖出
 	curPrice := this.tickInfo.Tick.GetLast()
-	if curPrice <= position*0.97 {
+	if curPrice <= position*0.975 {
 		this.BindFlag(FLAG_SELL_IMMEDIATE)
 		this.state = STATE_SELL_OUT
 		log.Println("OnWaitSell StopLoss")
 		return
 	}
 
-	if rsi <= 30 &&
-		this.HasFlag(FLAG_RSI_LARGE_50) &&
+	if this.HasFlag(FLAG_RSI_LARGE_40) &&
+		curPrice <= position*0.985 {
+		this.BindFlag(FLAG_SELL_IMMEDIATE)
+		this.state = STATE_SELL_OUT
+		log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.985*position")
+		return
+	}
+
+	if this.HasFlag(FLAG_RSI_LARGE_50) &&
 		curPrice <= position*1.008 {
 		this.BindFlag(FLAG_SELL_IMMEDIATE)
 		this.state = STATE_SELL_OUT
-		log.Println("OnWaitSell RSI<30 SELL")
+		log.Println("OnWaitSell price<1.008*position SELL")
 		return
 	}
 
@@ -331,7 +341,7 @@ func (this *RsiBuy) OnWaitSell() {
 
 func (this *RsiBuy) OnSellOut() {
 	// 15%, 25%, 35%, 25% 每6分钟
-	var sellrate = [4]float32{0.15, 0.25, 0.35, 0.25}
+	var sellrate = [4]float32{0.15, 0.30, 0.35, 0.20}
 	for idx := int(0); idx < len(sellrate); idx++ {
 		sum := float32(0)
 		for innerIdx := idx; innerIdx < len(sellrate); innerIdx++ {
@@ -536,7 +546,7 @@ func (this *RsiBuy) GetRsiNow() float32 {
 	for i := 0; i < len(*kline)/2; i++ {
 		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 	}
-	rsi := coinapi.GetRSI((*kline), coinapi.N8)
+	rsi := coinapi.GetRSI((*kline), coinapi.N13)
 	if 0 == rsi {
 		log.Println("RSI is zero")
 		return 0
