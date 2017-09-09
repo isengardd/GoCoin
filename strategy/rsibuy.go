@@ -16,8 +16,10 @@ const (
 )
 
 var (
-	TRADE_COOL_TIME      int64 = 1800 * 1000 //交易冷却时间
-	ORDER_DELAY_TIME_MAX int64 = 90 * 1000   //交易等待时间
+	STOP_LOSS_RATE       float32 = 0.975       // 止损率
+	TRADE_COOL_TIME      int64   = 1800 * 1000 //交易冷却时间
+	ORDER_DELAY_TIME_MAX int64   = 90 * 1000   //交易等待时间
+	PER_ORDER_COOL_TIME  int64   = 300 * 1000  //每一单的交易间隔
 )
 
 type RsiBuy struct {
@@ -229,7 +231,7 @@ func (this *RsiBuy) OnWaitBuy() {
 }
 
 func (this *RsiBuy) OnBuyIn() {
-	// 15%, 25%, 35%, 25% 每6分钟
+	// 15%, 25%, 35%, 25% 每5分钟
 	var buyrate = [4]float32{0.15, 0.30, 0.35, 0.20}
 	for idx := int(0); idx < len(buyrate); idx++ {
 		sum := float32(0)
@@ -267,7 +269,26 @@ func (this *RsiBuy) OnBuyIn() {
 	case 1, 2, 3:
 		nowTime := GetNowTime()
 		preOrder := this.buyOrders[orderLen-1]
-		if nowTime > preOrder.orderTime+360*1000 {
+
+		if orderLen == 3 {
+			//如果是最后一次购买，提前检查一下仓位
+			curPrice := this.tickInfo.Tick.GetLast()
+			coinCount := this.GetPositionCoinCount()
+			cny := this.userInfo.Info.Funds.Free.GetCny()
+			totalcny := cny + this.GetPositionTotalCny()
+			if coinCount > 0 {
+				if curPrice <= (STOP_LOSS_RATE*totalcny-cny)/coinCount {
+					// 当前价格，买入就要立刻卖出，所以直接卖出
+					this.BindFlag(FLAG_SELL_IMMEDIATE)
+					this.state = STATE_SELL_OUT
+					log.Println("OnBuyIn SELL STOP LOSS: Price=%f,C=%f,T=%f,CNY=%f",
+						curPrice, coinCount, totalcny, cny)
+					return
+				}
+			}
+		}
+
+		if nowTime > preOrder.orderTime+PER_ORDER_COOL_TIME {
 			cny := this.userInfo.Info.Funds.Free.GetCny() * buyrate[orderLen]
 			orderData := this.Buy(coinapi.LTC, cny)
 			if orderData.orderId != 0 {
@@ -309,7 +330,7 @@ func (this *RsiBuy) OnWaitSell() {
 
 	//低于成本价3%，卖出
 	curPrice := this.tickInfo.Tick.GetLast()
-	if curPrice <= position*0.975 {
+	if curPrice <= position*STOP_LOSS_RATE {
 		this.BindFlag(FLAG_SELL_IMMEDIATE)
 		this.state = STATE_SELL_OUT
 		log.Println("OnWaitSell StopLoss")
@@ -397,7 +418,7 @@ func (this *RsiBuy) OnSellOut() {
 		} else {
 			nowTime := GetNowTime()
 			preOrder := this.sellOrders[orderLen-1]
-			if nowTime > preOrder.orderTime+360*1000 {
+			if nowTime > preOrder.orderTime+PER_ORDER_COOL_TIME {
 				coincount := this.userInfo.Info.Funds.Free.GetLtc() * sellrate[orderLen]
 				orderData := this.Sell(coinapi.LTC, coincount)
 				if orderData.orderId != 0 {
@@ -568,4 +589,23 @@ func (this *RsiBuy) GetAvgPosition() float32 {
 	}
 
 	return money / count
+}
+
+func (this *RsiBuy) GetPositionTotalCny() float32 {
+	money := float32(0)
+
+	for _, val := range this.buyOrders {
+		money += val.count * val.price
+	}
+
+	return money
+}
+
+func (this *RsiBuy) GetPositionCoinCount() float32 {
+	count := float32(0)
+	for _, val := range this.buyOrders {
+		count += val.count
+	}
+
+	return count
 }
