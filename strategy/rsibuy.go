@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	STOP_LOSS_RATE       float32 = 0.975       // 止损率
+	STOP_LOSS_RATE       float32 = 0.95        // 止损率
 	TRADE_COOL_TIME      int64   = 1800 * 1000 //交易冷却时间
 	ORDER_DELAY_TIME_MAX int64   = 90 * 1000   //交易等待时间
 	PER_ORDER_COOL_TIME  int64   = 300 * 1000  //每一单的交易间隔
