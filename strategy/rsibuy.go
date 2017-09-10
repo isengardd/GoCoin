@@ -338,7 +338,7 @@ func (this *RsiBuy) OnWaitSell() {
 	}
 
 	if this.HasFlag(FLAG_RSI_LARGE_40) &&
-		curPrice <= position*0.985 {
+		curPrice <= position*0.975 {
 		this.BindFlag(FLAG_SELL_IMMEDIATE)
 		this.state = STATE_SELL_OUT
 		log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.985*position")
