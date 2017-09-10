@@ -25,6 +25,7 @@ var (
 type RsiBuy struct {
 	userInfo   *coinapi.RespUserInfo
 	tickInfo   *coinapi.RespTicker
+	kline      *[]coinapi.RespKline
 	buyOrders  []OrderData
 	sellOrders []OrderData
 	coolTime   int64
@@ -38,6 +39,7 @@ func (this *RsiBuy) Init() {
 	this.coolTime = 0
 	this.flag = 0
 	this.state = 0
+	this.kline = nil
 	//todo,从数据库加载订单信息，初始化当前状态
 
 	this.LoadOrders(coinapi.LTC)
@@ -178,6 +180,8 @@ func (this *RsiBuy) Run() {
 			this.SaveParams("cooltime", uint32(this.coolTime/1000))
 			this.SaveParams("flag", this.flag)
 			this.SaveParams("state", this.state)
+
+			this.kline = nil
 		}
 	}
 
@@ -328,7 +332,7 @@ func (this *RsiBuy) OnWaitSell() {
 		log.Println("OnWaitSell position is 0")
 	}
 
-	//低于成本价3%，卖出
+	//低于成本价x%，卖出
 	curPrice := this.tickInfo.Tick.GetLast()
 	if curPrice <= position*STOP_LOSS_RATE {
 		this.BindFlag(FLAG_SELL_IMMEDIATE)
@@ -337,26 +341,54 @@ func (this *RsiBuy) OnWaitSell() {
 		return
 	}
 
-	if this.HasFlag(FLAG_RSI_LARGE_40) &&
-		curPrice <= position*0.985 {
-		this.BindFlag(FLAG_SELL_IMMEDIATE)
-		this.state = STATE_SELL_OUT
-		log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.985*position")
-		return
-	}
+	//如果MACD在低谷，执行较为严格的止损
+	var fDif = float32(0)
+	var fDem = float32(0)
+	if this.kline != nil {
+		fDif = coinapi.GetDIF(*this.kline)
+		fDem = coinapi.GetDEM(*this.kline)
+		//fmt.Printf("fDif=%f, fDem = %f macd=%f\n", fDif, fDem, (fDif-fDem)*2)
 
-	if this.HasFlag(FLAG_RSI_LARGE_50) &&
-		curPrice <= position*1.008 {
-		this.BindFlag(FLAG_SELL_IMMEDIATE)
-		this.state = STATE_SELL_OUT
-		log.Println("OnWaitSell price<1.008*position SELL")
-		return
+		if fDif < 0 && fDem < 0 && (fDif-fDem) < 0 {
+			if this.HasFlag(FLAG_RSI_LARGE_40) &&
+				curPrice <= position*0.985 {
+				this.BindFlag(FLAG_SELL_IMMEDIATE)
+				this.state = STATE_SELL_OUT
+				log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.985*position")
+				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+				return
+			}
+
+			if this.HasFlag(FLAG_RSI_LARGE_50) &&
+				curPrice <= position*1.008 {
+				this.BindFlag(FLAG_SELL_IMMEDIATE)
+				this.state = STATE_SELL_OUT
+				log.Println("OnWaitSell price<1.008*position SELL")
+				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+				return
+			}
+		}
+	} else {
+		log.Println("OnWaitSell this.kline is nil")
 	}
 
 	if rsi >= 80 {
 		this.state = STATE_SELL_OUT
 		log.Printf("OnWaitSell rsi=%f, SELL", rsi)
 		return
+	}
+
+	if fDif >= 0 && fDem >= 0 && (fDif-fDem) < 0 {
+		//上一个时间单位是MACD>0
+		var fPreDif = coinapi.GetDIF((*this.kline)[1:])
+		var fPreDem = coinapi.GetDEM((*this.kline)[1:])
+		if fPreDif >= 0 && fPreDem >= 0 && (fPreDif-fPreDem) >= 0 {
+			this.state = STATE_SELL_OUT
+			this.BindFlag(FLAG_SELL_IMMEDIATE)
+			log.Println("OnWaitSell MACD CHANGE < 0 SELL")
+			log.Printf("fDif=%f, fDem = %f, fPreDif=%f, fPreDem=%f\n", fDif, fDem, fPreDif, fPreDem)
+			return
+		}
 	}
 }
 
@@ -573,6 +605,7 @@ func (this *RsiBuy) GetRsiNow() float32 {
 		return 0
 	}
 
+	this.kline = kline
 	return rsi
 }
 
