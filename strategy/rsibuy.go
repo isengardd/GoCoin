@@ -20,6 +20,7 @@ var (
 	TRADE_COOL_TIME      int64   = 1800 * 1000 //交易冷却时间
 	ORDER_DELAY_TIME_MAX int64   = 90 * 1000   //交易等待时间
 	PER_ORDER_COOL_TIME  int64   = 300 * 1000  //每一单的交易间隔
+	RSI_LEVEL                    = coinapi.N8
 )
 
 type RsiBuy struct {
@@ -202,6 +203,8 @@ func (this *RsiBuy) DoStrategy(t *time.Timer) {
 		return
 	}
 
+	this.FetchKline()
+
 	switch this.state {
 	case STATE_NONE:
 		this.state = STATE_WAIT_BUY
@@ -224,8 +227,8 @@ func (this *RsiBuy) OnWaitBuy() {
 	}
 
 	//rsi(8) < 20
-	rsi := this.GetRsiNow()
-	if rsi == 0 {
+	rsi := this.GetPreRsi(true)
+	if rsi <= 0 {
 		return
 	}
 
@@ -236,7 +239,7 @@ func (this *RsiBuy) OnWaitBuy() {
 
 func (this *RsiBuy) OnBuyIn() {
 	// 15%, 25%, 35%, 25% 每5分钟
-	var buyrate = [4]float32{0.15, 0.30, 0.35, 0.20}
+	var buyrate = [4]float32{0.30, 0.25, 0.25, 0.20}
 	for idx := int(0); idx < len(buyrate); idx++ {
 		sum := float32(0)
 		for innerIdx := idx; innerIdx < len(buyrate); innerIdx++ {
@@ -349,7 +352,7 @@ func (this *RsiBuy) OnWaitSell() {
 		fDem = coinapi.GetDEM(*this.kline)
 		//fmt.Printf("fDif=%f, fDem = %f macd=%f\n", fDif, fDem, (fDif-fDem)*2)
 
-		if fDif < 0 && fDem < 0 && (fDif-fDem) < 0 {
+		if (fDif < 0 || fDem < 0) && (fDif-fDem) < 0 {
 			if this.HasFlag(FLAG_RSI_LARGE_40) &&
 				curPrice <= position*0.985 {
 				this.BindFlag(FLAG_SELL_IMMEDIATE)
@@ -590,22 +593,33 @@ func (this *RsiBuy) WaitSellOrderDone(bCancel bool) bool {
 }
 
 func (this *RsiBuy) GetRsiNow() float32 {
-	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
-	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+	if this.kline == nil {
 		return 0
 	}
-
-	// 按照时间降序
-	for i := 0; i < len(*kline)/2; i++ {
-		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
-	}
-	rsi := coinapi.GetRSI((*kline), coinapi.N13)
+	rsi := coinapi.GetRSI((*this.kline), RSI_LEVEL)
 	if 0 == rsi {
-		log.Println("RSI is zero")
+		log.Println("GetRsiNow() RSI is zero")
+		return 0
+	}
+	return rsi
+}
+
+func (this *RsiBuy) GetPreRsi(lowest bool) float32 {
+	if this.kline == nil {
 		return 0
 	}
 
-	this.kline = kline
+	closed := (*this.kline)[1].Close
+	if lowest {
+		(*this.kline)[1].Close = (*this.kline)[1].Low
+	}
+
+	rsi := coinapi.GetRSI((*this.kline)[1:], RSI_LEVEL)
+	(*this.kline)[1].Close = closed
+	if rsi == 0 {
+		log.Println("GetPreRsi RSI is zero")
+		return 0
+	}
 	return rsi
 }
 
@@ -641,4 +655,19 @@ func (this *RsiBuy) GetPositionCoinCount() float32 {
 	}
 
 	return count
+}
+
+func (this *RsiBuy) FetchKline() {
+	this.kline = nil
+	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
+	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+		return
+	}
+
+	// 按照时间降序
+	for i := 0; i < len(*kline)/2; i++ {
+		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
+	}
+
+	this.kline = kline
 }
