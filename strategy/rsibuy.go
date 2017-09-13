@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	FLAG_RSI_LARGE_50   = 1 << 0
+	FLAG_RSI_LARGE_60   = 1 << 0
 	FLAG_SELL_IMMEDIATE = 1 << 1
-	FLAG_RSI_LARGE_40   = 1 << 2
+	FLAG_RSI_LARGE_50   = 1 << 2
+	FLAG_RSI_LARGE_40   = 1 << 3
 )
 
 var (
@@ -24,20 +25,22 @@ var (
 )
 
 type RsiBuy struct {
-	userInfo   *coinapi.RespUserInfo
-	tickInfo   *coinapi.RespTicker
-	kline      *[]coinapi.RespKline
-	buyOrders  []OrderData
-	sellOrders []OrderData
-	coolTime   int64
-	state      uint32
-	flag       uint32
+	userInfo      *coinapi.RespUserInfo
+	tickInfo      *coinapi.RespTicker
+	kline         *[]coinapi.RespKline
+	buyOrders     []OrderData
+	sellOrders    []OrderData
+	coolTime      int64
+	lastTradeTime int64 // 上一次开仓时间
+	state         uint32
+	flag          uint32
 }
 
 func (this *RsiBuy) Init() {
 	this.buyOrders = make([]OrderData, 0)
 	this.sellOrders = make([]OrderData, 0)
 	this.coolTime = 0
+	this.lastTradeTime = 0
 	this.flag = 0
 	this.state = 0
 	this.kline = nil
@@ -115,6 +118,8 @@ func (this *RsiBuy) LoadParams() {
 			this.flag = val
 		} else if name == "state" {
 			this.state = val
+		} else if name == "lasttradetime" {
+			this.lastTradeTime = int64(val) * 1000
 		}
 	}
 }
@@ -181,6 +186,7 @@ func (this *RsiBuy) Run() {
 			this.SaveParams("cooltime", uint32(this.coolTime/1000))
 			this.SaveParams("flag", this.flag)
 			this.SaveParams("state", this.state)
+			this.SaveParams("lasttradetime", uint32(this.lastTradeTime/1000))
 
 			this.kline = nil
 		}
@@ -232,7 +238,14 @@ func (this *RsiBuy) OnWaitBuy() {
 		return
 	}
 
-	if rsi <= 20 {
+	if GetNowTime() <= (this.lastTradeTime + 1800*1000) {
+		//半小时内交易过
+		if rsi <= 15 {
+			this.lastTradeTime = GetNowTime()
+			this.state = STATE_BUY_IN
+		}
+	} else if rsi <= 20 {
+		this.lastTradeTime = GetNowTime()
 		this.state = STATE_BUY_IN
 	}
 }
@@ -324,7 +337,9 @@ func (this *RsiBuy) OnWaitSell() {
 		return
 	}
 
-	if rsi >= 50 {
+	if rsi >= 60 {
+		this.BindFlag(FLAG_RSI_LARGE_60)
+	} else if rsi >= 50 {
 		this.BindFlag(FLAG_RSI_LARGE_50)
 	} else if rsi >= 40 {
 		this.BindFlag(FLAG_RSI_LARGE_40)
@@ -354,19 +369,28 @@ func (this *RsiBuy) OnWaitSell() {
 
 		if (fDif < 0 || fDem < 0) && (fDif-fDem) < 0 {
 			if this.HasFlag(FLAG_RSI_LARGE_40) &&
-				curPrice <= position*0.985 {
+				curPrice <= position*0.96 {
 				this.BindFlag(FLAG_SELL_IMMEDIATE)
 				this.state = STATE_SELL_OUT
-				log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.985*position")
+				log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.96*position")
 				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
 				return
 			}
 
 			if this.HasFlag(FLAG_RSI_LARGE_50) &&
-				curPrice <= position*1.008 {
+				curPrice <= position*0.985 {
 				this.BindFlag(FLAG_SELL_IMMEDIATE)
 				this.state = STATE_SELL_OUT
-				log.Println("OnWaitSell price<1.008*position SELL")
+				log.Println("OnWaitSell FLAG_RSI_LARGE_50 , price <0.985*position")
+				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+				return
+			}
+
+			if this.HasFlag(FLAG_RSI_LARGE_60) &&
+				curPrice <= position*1.010 {
+				this.BindFlag(FLAG_SELL_IMMEDIATE)
+				this.state = STATE_SELL_OUT
+				log.Println("OnWaitSell price<1.010*position SELL")
 				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
 				return
 			}
