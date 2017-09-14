@@ -238,7 +238,7 @@ func (this *RsiBuy) OnWaitBuy() {
 		return
 	}
 
-	if GetNowTime() <= (this.lastTradeTime + 1800*1000) {
+	if GetNowTime() <= (this.lastTradeTime + 6*3600*1000) {
 		//半小时内交易过
 		if rsi <= 15 {
 			this.lastTradeTime = GetNowTime()
@@ -301,7 +301,7 @@ func (this *RsiBuy) OnBuyIn() {
 					// 当前价格，买入就要立刻卖出，所以直接卖出
 					this.BindFlag(FLAG_SELL_IMMEDIATE)
 					this.state = STATE_SELL_OUT
-					log.Println("OnBuyIn SELL STOP LOSS: Price=%f,C=%f,T=%f,CNY=%f",
+					log.Printf("OnBuyIn SELL STOP LOSS: Price=%f,C=%f,T=%f,CNY=%f",
 						curPrice, coinCount, totalcny, cny)
 					return
 				}
