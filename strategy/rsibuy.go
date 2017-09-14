@@ -18,9 +18,9 @@ const (
 
 var (
 	STOP_LOSS_RATE       float32 = 0.95        // 止损率
-	TRADE_COOL_TIME      int64   = 1800 * 1000 //交易冷却时间
+	TRADE_COOL_TIME      int64   = 2700 * 1000 //交易冷却时间
 	ORDER_DELAY_TIME_MAX int64   = 60 * 1000   //交易等待时间
-	PER_ORDER_COOL_TIME  int64   = 60 * 1000   //每一单的交易间隔
+	PER_ORDER_COOL_TIME  int64   = 30 * 1000   //每一单的交易间隔
 	RSI_LEVEL                    = coinapi.N8
 )
 
@@ -239,14 +239,17 @@ func (this *RsiBuy) OnWaitBuy() {
 	}
 
 	if GetNowTime() <= (this.lastTradeTime + 6*3600*1000) {
-		//半小时内交易过
-		if rsi <= 15 {
+		//6小时内交易过
+		rsiNow := this.GetRsiNow()
+		if rsi <= 15 && rsiNow > 15 {
 			this.lastTradeTime = GetNowTime()
 			this.state = STATE_BUY_IN
+			log.Printf("OnWaitBuy prersi=%f currsi=%f buy in", rsi, rsiNow)
 		}
 	} else if rsi <= 20 {
 		this.lastTradeTime = GetNowTime()
 		this.state = STATE_BUY_IN
+		log.Printf("OnWaitBuy rsi=%f buyin", rsi)
 	}
 }
 
