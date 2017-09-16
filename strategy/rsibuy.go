@@ -238,7 +238,7 @@ func (this *RsiBuy) OnWaitBuy() {
 		return
 	}
 
-	if GetNowTime() <= (this.lastTradeTime + 6*3600*1000) {
+	/*	if GetNowTime() <= (this.lastTradeTime + 6*3600*1000) {
 		//6小时内交易过
 		rsiNow := this.GetRsiNow()
 		if rsi <= 15 && rsiNow > 15 {
@@ -246,10 +246,12 @@ func (this *RsiBuy) OnWaitBuy() {
 			this.state = STATE_BUY_IN
 			log.Printf("OnWaitBuy prersi=%f currsi=%f buy in", rsi, rsiNow)
 		}
-	} else if rsi <= 20 {
+	} else */
+	rsiNow := this.GetRsiNow()
+	if rsi <= 20 && rsiNow > 20 {
 		this.lastTradeTime = GetNowTime()
 		this.state = STATE_BUY_IN
-		log.Printf("OnWaitBuy rsi=%f buyin", rsi)
+		log.Printf("OnWaitBuy prersi=%f currsi=%f buyin", rsi, rsiNow)
 	}
 }
 
