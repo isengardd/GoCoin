@@ -546,7 +546,7 @@ func (this *KDJ) GetLen(number uint32) float32 {
 }
 
 func (this *KDJ) GetA(number uint32) float32 {
-	return float32(1) / float32(3)
+	return float32(1) / float32(number)
 }
 
 func (this *KDJ) GetRaList(number uint32) []float32 {

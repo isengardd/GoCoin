@@ -219,10 +219,10 @@ func TestKDJ() {
 	for i := 0; i < len(*kline)/2; i++ {
 		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 	}
-	k, d := coinapi.GetKDJ((*kline), 9, 3, 3)
+	k, d := coinapi.GetKDJ((*kline), 15, 5, 5)
 	fmt.Printf("curk=%f, curd=%f\n", k, d)
 	for i := 1; i < 30; i++ {
-		k, d = coinapi.GetKDJ((*kline)[i:], 9, 3, 3)
+		k, d = coinapi.GetKDJ((*kline)[i:], 15, 5, 5)
 		fmt.Printf("prekd_%d, k=%f, d=%f\n", i, k, d)
 	}
 }
