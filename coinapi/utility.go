@@ -2,9 +2,11 @@ package coinapi
 
 import (
 	//"fmt"
+	"math"
 	"sort"
 	"time"
 	//"unsafe"
+	"log"
 )
 
 type Float32Slice []float32
@@ -130,116 +132,59 @@ func GetMaList(symbol string, intv string, avglist []int) map[uint][]float32 {
 	return malist
 }
 
-/*////////////////////////////////////////
-MACD相关
-一、差离值（DIF值）：[2][3]
-先利用收盘价的指数移动平均值（12日／26日）计算出差离值。[4]
-〖公式〗
-DIF=EMA_{{(close,12)}}-EMA_{{(close,26)}}
-二、讯号线（DEM值，又称MACD值）：
-计算出DIF后，会再画一条“讯号线”，通常是DIF的9日指数移动平均值。
-〖公式〗
-DEM=EMA_{{(DIF,9)}}
-三、柱形图或棒形图（histogram / bar graph）：
-接着，将DIF与DEM的差画成“柱形图”（MACD bar / OSC）。
-〖公式〗
-OSC=DIF-DEM
-简写为
-D-M
-////////////////////////////////////////*/
-const (
-	MACD_KLINE_MAX = 400
-	F              = 5.45
-	N9             = 9
-	a9             = float32(2) / float32(10)
-	k9             = float32(F) * 10
-	N12            = 12
-	a12            = (float32)(2) / (float32)(13)
-	k12            = (float32(F) * 13)
-	N26            = 26
-	a26            = (float32)(2) / (float32)(27)
-	k26            = (float32(F) * 27)
-)
-
-var raList9 []float32 = nil
-var raList12 []float32 = nil
-var raList26 []float32 = nil
+var typeMap map[string]RaData = nil
 
 func init() {
-	listlen := k9
-	raList9 = make([]float32, int32(listlen))
-	raList9[0] = 1
-	for i := 1; i < len(raList9); i++ {
-		raList9[i] = raList9[i-1] * (1 - a9)
-	}
-
-	listlen = k12
-	raList12 = make([]float32, int32(listlen))
-	raList12[0] = 1
-	for i := 1; i < len(raList12); i++ {
-		raList12[i] = raList12[i-1] * (1 - a12)
-	}
-
-	listlen = k26
-	raList26 = make([]float32, int32(listlen))
-	raList26[0] = 1
-	for i := 1; i < len(raList26); i++ {
-		raList26[i] = raList26[i-1] * (1 - a26)
-	}
-
-	//fmt.Printf("%v\n", raList9)
-	//fmt.Printf("%v\n", raList12)
-	//fmt.Printf("%v\n", raList26)
+	varMacd := &MACD{}
+	varMacd.Init()
+	varRsi := &RSI{}
+	varRsi.Init()
+	varKdj := &KDJ{}
+	varKdj.Init()
+	typeMap = make(map[string]RaData, 0)
+	typeMap["macd"] = varMacd
+	typeMap["rsi"] = varRsi
+	typeMap["kdj"] = varKdj
 }
 
-func GetEMA(kline []RespKline, count int) float32 {
-	if kline == nil {
+func GetEMA(valList []float32, datatype string, count uint32) float32 {
+	if valList == nil {
 		return 0
 	}
 
-	minLen := k26
-	if len(kline) < int(minLen) {
+	dataCont, ok := typeMap[datatype]
+	if !ok {
+		log.Printf("GetEMA %s, not implement\n", datatype)
 		return 0
 	}
 
-	var raList []float32 = nil
-	var a float32 = 0
-	if count == N12 {
-		raList = raList12
-		a = a12
-	} else if count == N26 {
-		raList = raList26
-		a = a26
-	} else if count == N4 {
-		raList = raList4
-		a = a4
+	minLen := int(dataCont.GetLen(count))
+	if len(valList) < int(minLen) {
+		log.Printf("GetEMA %s,len(kline)=%d too short, need=%d\n", datatype, len(valList), minLen)
+		return 0
+	}
 
-	} else if count == N7 {
-		raList = raList7
-		a = a7
-	} else if count == N6 {
-		raList = raList6
-		a = a6
-	} else if count == N8 {
-		raList = raList8
-		a = a8
-	} else if count == N13 {
-		raList = raList13
-		a = a13
-	} else {
+	var raList []float32 = dataCont.GetRaList(count)
+	var a float32 = dataCont.GetA(count)
+	if raList == nil || a == 0 {
+		log.Printf("GetEMA %s, number=%d not data\n", datatype, count)
 		return 0
 	}
 
 	var ema float32 = 0
 	for idx, val := range raList {
-		ema += (kline)[idx].Close * val
+		ema += (valList)[idx] * val
 	}
 	ema *= a
 	return ema
 }
 
 func GetDIF(kline []RespKline) float32 {
-	return GetEMA(kline, N12) - GetEMA(kline, N26)
+	valList := make([]float32, len(kline))
+	for i, val := range kline {
+		valList[i] = val.Close
+	}
+	return GetEMA(valList, "macd", 12) - GetEMA(valList, "macd", 26)
 }
 
 func GetDEM(kline []RespKline) float32 {
@@ -247,14 +192,18 @@ func GetDEM(kline []RespKline) float32 {
 		return 0
 	}
 
-	minLen := k26 + k9
+	dataCont, ok := typeMap["macd"]
+	if !ok {
+		return 0
+	}
+	minLen := MIN_KLINE_LEN + dataCont.GetLen(9)
 	if len(kline) < int(minLen) {
 		return 0
 	}
 
-	listlen := k9
-	a := a9
-	raList := raList9
+	listlen := dataCont.GetLen(9)
+	a := dataCont.GetA(9)
+	raList := dataCont.GetRaList(9)
 	difList := make([]float32, int(listlen))
 	for idx, _ := range difList {
 		difList[idx] = GetDIF(kline[idx:])
@@ -276,6 +225,209 @@ func GetMACDBar(kline []RespKline) float32 {
 	return result
 }
 
+func GetRSI(kline []RespKline, count uint32) float32 {
+	if kline == nil {
+		return 0
+	}
+
+	uKline := make([]float32, len(kline))
+	dKline := make([]float32, len(kline))
+	for idx, val := range kline {
+		if idx == len(kline)-1 {
+			continue
+		}
+
+		uKline[idx] = 0
+		dKline[idx] = 0
+		if val.Close >= kline[idx+1].Close {
+			uKline[idx] = val.Close - kline[idx+1].Close
+			dKline[idx] = 0
+		} else {
+			uKline[idx] = 0
+			dKline[idx] = kline[idx+1].Close - val.Close
+		}
+	}
+
+	uEma := GetEMA(uKline, "rsi", count)
+	dEma := GetEMA(dKline, "rsi", count)
+
+	if uEma == 0 || dEma == 0 {
+		return 0
+	}
+
+	rsi := uEma / (uEma + dEma) * 100
+	return rsi
+}
+
+func GetRSV(kline []RespKline, count uint32) float32 {
+	if len(kline) < int(count) {
+		log.Printf("GetRSV len(kline) < count, count=%d\n", count)
+		return 0
+	}
+
+	max := GetMaxPrice(kline[:count])
+	min := GetMinPrice(kline[:count])
+
+	if 0 == max || 0 == min || min == max {
+		log.Printf("GetRSV error, max=%f,min=%f\n", max, min)
+		return 0
+	}
+
+	rsv := (kline[0].Close - min) / (max - min) * 100
+	if rsv < 1 {
+		rsv = 1
+	}
+	if rsv > 100 {
+		rsv = 100
+	}
+
+	return rsv
+}
+
+func GetMaxPrice(kline []RespKline) float32 {
+	var max float32 = 0
+	for _, val := range kline {
+		if val.High > max {
+			max = val.High
+		}
+	}
+
+	return max
+}
+
+func GetMinPrice(kline []RespKline) float32 {
+	var min float32 = math.MaxFloat32
+	for _, val := range kline {
+		if val.Low < min {
+			min = val.Low
+		}
+	}
+
+	return min
+}
+
+// 返回k,d值
+func GetKDJ(kline []RespKline, N uint32, M1 uint32, M2 uint32) (float32, float32) {
+	if N == 0 || M1 == 0 || M2 == 0 {
+		return 0, 0
+	}
+
+	dataCont, ok := typeMap["kdj"]
+	if !ok {
+		return 0, 0
+	}
+
+	//算出RSV
+	rsvDay := int(dataCont.GetLen(M2)) + int(dataCont.GetLen(M1)) + int(N)
+	if len(kline) < rsvDay {
+		log.Printf("GetKDJ len(kline) < rsvDay, rsvDay=%d\n", rsvDay)
+		return 0, 0
+	}
+	//rsvDay := uint32(dataCont.GetLen(N)) + N
+
+	rsvList := make([]float32, rsvDay)
+	for i := 0; i < rsvDay; i++ {
+		rsvList[i] = GetRSV(kline[i:int(N)+i], N)
+	}
+
+	//算出K值
+	kDay := int32(dataCont.GetLen(M2))
+	kList := make([]float32, kDay)
+	kList[len(kList)-1] = GetEMA(rsvList[len(kList)-1:len(kList)+int(dataCont.GetLen(M1))-1], "kdj", M1)
+	for i := len(kList) - 2; i >= 0; i-- {
+		kList[i] = dataCont.GetA(M1)*rsvList[i] + kList[i+1]*(1-dataCont.GetA(M1))
+	}
+
+	//算出D值
+	DVal := GetEMA(kList, "kdj", M2)
+	return kList[0], DVal
+}
+
+//////////////////////////////////////////
+type RaData interface {
+	GetRaList(number uint32) []float32
+	GetA(number uint32) float32
+	GetLen(number uint32) float32
+}
+
+/*////////////////////////////////////////
+MACD相关
+一、差离值（DIF值）：[2][3]
+先利用收盘价的指数移动平均值（12日／26日）计算出差离值。[4]
+〖公式〗
+DIF=EMA_{{(close,12)}}-EMA_{{(close,26)}}
+二、讯号线（DEM值，又称MACD值）：
+计算出DIF后，会再画一条“讯号线”，通常是DIF的9日指数移动平均值。
+〖公式〗
+DEM=EMA_{{(DIF,9)}}
+三、柱形图或棒形图（histogram / bar graph）：
+接着，将DIF与DEM的差画成“柱形图”（MACD bar / OSC）。
+〖公式〗
+OSC=DIF-DEM
+简写为
+D-M
+////////////////////////////////////////*/
+const (
+	MACD_KLINE_MAX = 400
+	F              = 5.45
+	MIN_KLINE_LEN  = (float32(F) * 27)
+)
+
+// 计算MACD的对象
+type MACD struct {
+	raFactorMap map[uint32][]float32
+}
+
+func (this *MACD) Init() {
+	this.raFactorMap = make(map[uint32][]float32, 0)
+}
+
+func (this *MACD) GetRaList(number uint32) []float32 {
+	if 0 == number {
+		return nil
+	}
+
+	this.CalcList(number)
+	return this.raFactorMap[number]
+}
+
+func (this *MACD) GetA(number uint32) float32 {
+	if 0 == number {
+		return 0
+	}
+
+	return float32(2) / float32(number+1)
+}
+
+func (this *MACD) GetLen(number uint32) float32 {
+	if 0 == number {
+		return 0
+	}
+
+	return float32(F) * float32(number+1)
+}
+
+func (this *MACD) CalcList(number uint32) {
+	if _, ok := this.raFactorMap[number]; ok {
+		return
+	}
+
+	if 0 == number {
+		return
+	}
+
+	var n uint32 = number
+	var a float32 = this.GetA(n)
+	var k float32 = this.GetLen(n)
+	raList := make([]float32, int32(k))
+
+	raList[0] = 1
+	for i := 1; i < len(raList); i++ {
+		raList[i] = raList[i-1] * (1 - a)
+	}
+	this.raFactorMap[number] = raList
+}
+
 /*////////////////////////////////////////
 RSI相关
 设每天向上变动为U，向下变动为D。
@@ -295,99 +447,134 @@ RSI: 相对强弱指数（Relative Strength Index）；
 
 考虑n=4(10,80)和n=7(20,80)两种
 ////////////////////////////////////////*/
-const (
-	N4  = 4
-	a4  = float32(1) / float32(4) //这里首项系数是1/n
-	k4  = float32(F) * 5
-	N6  = 6
-	a6  = float32(1) / float32(6) //这里首项系数是1/n
-	k6  = float32(F) * 7
-	N7  = 7
-	a7  = float32(1) / float32(7) //这里首项系数是1/n
-	k7  = float32(F) * 8
-	N8  = 8
-	a8  = float32(1) / float32(8)
-	k8  = float32(F) * 9
-	N13 = 13
-	a13 = float32(1) / float32(13)
-	k13 = float32(F) * 14
 
-	// todo:如果有跟MACD重复的天数，需要重构GetEMA的代码
-)
-
-var raList4 []float32 = nil
-var raList6 []float32 = nil
-var raList7 []float32 = nil
-var raList8 []float32 = nil
-var raList13 []float32 = nil
-
-func init() {
-	listlen := k4
-	raList4 = make([]float32, int32(listlen))
-	raList4[0] = 1
-	for i := 1; i < len(raList4); i++ {
-		raList4[i] = raList4[i-1] * (1 - a4)
-	}
-
-	listlen = k7
-	raList7 = make([]float32, int32(listlen))
-	raList7[0] = 1
-	for i := 1; i < len(raList7); i++ {
-		raList7[i] = raList7[i-1] * (1 - a7)
-	}
-
-	listlen = k6
-	raList6 = make([]float32, int32(listlen))
-	raList6[0] = 1
-	for i := 1; i < len(raList6); i++ {
-		raList6[i] = raList6[i-1] * (1 - a6)
-	}
-
-	listlen = k8
-	raList8 = make([]float32, int32(listlen))
-	raList8[0] = 1
-	for i := 1; i < len(raList8); i++ {
-		raList8[i] = raList8[i-1] * (1 - a8)
-	}
-
-	listlen = k13
-	raList13 = make([]float32, int32(listlen))
-	raList13[0] = 1
-	for i := 1; i < len(raList13); i++ {
-		raList13[i] = raList13[i-1] * (1 - a13)
-	}
+type RSI struct {
+	raFactorMap map[uint32][]float32
 }
 
-func GetRSI(kline []RespKline, count int) float32 {
-	if kline == nil {
+func (this *RSI) Init() {
+	this.raFactorMap = make(map[uint32][]float32, 0)
+}
+
+func (this *RSI) GetRaList(number uint32) []float32 {
+	if 0 == number {
+		return nil
+	}
+
+	this.CalcList(number)
+	return this.raFactorMap[number]
+}
+
+func (this *RSI) GetA(number uint32) float32 {
+	if 0 == number {
 		return 0
 	}
 
-	uKline := make([]RespKline, len(kline))
-	dKline := make([]RespKline, len(kline))
-	for idx, val := range kline {
-		if idx == len(kline)-1 {
-			continue
-		}
+	return float32(1) / float32(number)
+}
 
-		uKline[idx] = val
-		dKline[idx] = val
-		if val.Close >= kline[idx+1].Close {
-			uKline[idx].Close = val.Close - kline[idx+1].Close
-			dKline[idx].Close = 0
-		} else {
-			uKline[idx].Close = 0
-			dKline[idx].Close = kline[idx+1].Close - val.Close
-		}
-	}
-
-	uEma := GetEMA(uKline, count)
-	dEma := GetEMA(dKline, count)
-
-	if uEma == 0 || dEma == 0 {
+func (this *RSI) GetLen(number uint32) float32 {
+	if 0 == number {
 		return 0
 	}
 
-	rsi := uEma / (uEma + dEma) * 100
-	return rsi
+	return float32(F) * float32(number+1)
+}
+
+func (this *RSI) CalcList(number uint32) {
+	if _, ok := this.raFactorMap[number]; ok {
+		return
+	}
+
+	if 0 == number {
+		return
+	}
+
+	var n uint32 = number
+	var a float32 = this.GetA(n)
+	var k float32 = this.GetLen(n)
+	raList := make([]float32, int32(k))
+
+	raList[0] = 1
+	for i := 1; i < len(raList); i++ {
+		raList[i] = raList[i-1] * (1 - a)
+	}
+	this.raFactorMap[number] = raList
+}
+
+/*////////////////////////////////////////
+KDJ相关
+n日RSV=（Cn－Ln）÷（Hn－Ln）×100
+
+式中，Cn为第n日收盘价；Ln为n日内的最低价；Hn为n日内的最高价。RSV值始终在1—100间波动。
+
+其次，计算K值与D值：
+
+当日K值=2/3×前一日K值＋1/3×当日RSV
+
+当日D值=2/3×前一日D值＋1/3×当日K值
+
+若无前一日K 值与D值，则可分别用50来代替。
+
+以9日为周期的KD线为例。首先须计算出最近9日的RSV值，即未成熟随机值，计算公式为
+
+9日RSV=（C－L9）÷（H9－L9）×100
+
+式中，C为第9日的收盘价；L9为9日内的最低价；H9为9日内的最高价。
+
+K值=2/3×前一日 K值＋1/3×当日RSV
+
+D值=2/3×前一日K值＋1/3×当日RSV
+
+若无前一日K值与D值，则可以分别用50代替。
+
+*/ ////////////////////////////////////////
+type KDJ struct {
+	raFactorMap map[uint32][]float32
+}
+
+func (this *KDJ) Init() {
+	this.raFactorMap = make(map[uint32][]float32, 0)
+}
+
+func (this *KDJ) GetLen(number uint32) float32 {
+	if 0 == number {
+		return 0
+	}
+
+	return float32(F) * float32(number+1)
+}
+
+func (this *KDJ) GetA(number uint32) float32 {
+	return float32(1) / float32(3)
+}
+
+func (this *KDJ) GetRaList(number uint32) []float32 {
+	if 0 == number {
+		return nil
+	}
+
+	this.CalcList(number)
+	return this.raFactorMap[number]
+}
+
+func (this *KDJ) CalcList(number uint32) {
+	if _, ok := this.raFactorMap[number]; ok {
+		return
+	}
+
+	if 0 == number {
+		return
+	}
+
+	var n uint32 = number
+	var a float32 = this.GetA(n)
+	var k float32 = this.GetLen(n)
+	raList := make([]float32, int32(k))
+
+	raList[0] = 1
+	for i := 1; i < len(raList); i++ {
+		raList[i] = raList[i-1] * (1 - a)
+	}
+	this.raFactorMap[number] = raList
 }

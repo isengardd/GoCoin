@@ -18,6 +18,7 @@ func main() {
 	//TestLowHighPrice()
 	//TestMACD()
 	//TestRSI()
+	//TestKDJ()
 	//TestMaList()
 	//	lowPrice := coinapi.GetNLowestPrice(coinapi.LTC, 2, "30min", 7)
 	//	if lowPrice != nil {
@@ -166,11 +167,10 @@ func TestRSI() {
 	for i := 0; i < len(*kline)/2; i++ {
 		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 	}
-	rsi := coinapi.GetRSI((*kline), coinapi.N4)
+	rsi := coinapi.GetRSI((*kline), 4)
 	fmt.Printf("currsi4=%f\n", rsi)
-
 	for i := 1; i < 30; i++ {
-		rsi = coinapi.GetRSI((*kline)[i:], coinapi.N4)
+		rsi = coinapi.GetRSI((*kline)[i:], 4)
 		fmt.Printf("prersi4_%d=%f\n", i, rsi)
 	}
 }
@@ -192,19 +192,37 @@ func TestRSISiumulate() {
 	fmt.Printf("kline=%v\n", (*kline)[0])
 	for i := 1; i < coinapi.MACD_KLINE_MAX; i++ {
 		if (*kline)[i].Date == uint64(the_time.Unix())*1000 {
-			rsi4 := coinapi.GetRSI((*kline)[i:], coinapi.N4)
-			rsi8 := coinapi.GetRSI((*kline)[i:], coinapi.N13)
+			rsi4 := coinapi.GetRSI((*kline)[i:], 4)
+			rsi8 := coinapi.GetRSI((*kline)[i:], 13)
 			fmt.Printf("origin rsi4=%f, rsi8=%f\n", rsi4, rsi8)
 			(*kline)[i].Close = 351.00
 			fmt.Printf("kline=%v\n", (*kline)[i])
-			rsi4 = coinapi.GetRSI((*kline)[i:], coinapi.N4)
-			rsi8 = coinapi.GetRSI((*kline)[i:], coinapi.N13)
+			rsi4 = coinapi.GetRSI((*kline)[i:], 4)
+			rsi8 = coinapi.GetRSI((*kline)[i:], 13)
 			fmt.Printf("dot rsi4=%f, rsi8=%f\n", rsi4, rsi8)
 
 			fmt.Printf("pre kline=%v\n", (*kline)[i+1])
-			rsi4 = coinapi.GetRSI((*kline)[i+1:], coinapi.N4)
-			rsi8 = coinapi.GetRSI((*kline)[i+1:], coinapi.N13)
+			rsi4 = coinapi.GetRSI((*kline)[i+1:], 4)
+			rsi8 = coinapi.GetRSI((*kline)[i+1:], 13)
 			fmt.Printf("pre rsi4=%f, rsi8=%f\n", rsi4, rsi8)
 		}
+	}
+}
+
+func TestKDJ() {
+	kline := coinapi.GetKline(coinapi.LTC, "15min", coinapi.MACD_KLINE_MAX, 0)
+	if kline == nil || len(*kline) < coinapi.MACD_KLINE_MAX {
+		return
+	}
+
+	// 按照时间降序
+	for i := 0; i < len(*kline)/2; i++ {
+		(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
+	}
+	k, d := coinapi.GetKDJ((*kline), 9, 3, 3)
+	fmt.Printf("curk=%f, curd=%f\n", k, d)
+	for i := 1; i < 30; i++ {
+		k, d = coinapi.GetKDJ((*kline)[i:], 9, 3, 3)
+		fmt.Printf("prekd_%d, k=%f, d=%f\n", i, k, d)
 	}
 }

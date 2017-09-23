@@ -21,7 +21,7 @@ var (
 	TRADE_COOL_TIME      int64   = 2700 * 1000 //交易冷却时间
 	ORDER_DELAY_TIME_MAX int64   = 60 * 1000   //交易等待时间
 	PER_ORDER_COOL_TIME  int64   = 30 * 1000   //每一单的交易间隔
-	RSI_LEVEL                    = coinapi.N8
+	RSI_LEVEL                    = uint32(8)
 )
 
 type RsiBuy struct {
@@ -233,11 +233,15 @@ func (this *RsiBuy) OnWaitBuy() {
 	}
 
 	//rsi(8) < 20
-	rsi := this.GetPreRsi(true)
-	if rsi <= 0 {
+	prersi := this.GetPreRsi(true)
+	if prersi <= 0 {
 		return
 	}
 
+	curD := this.GetKDJ_DVal()
+	if curD <= 0 {
+		return
+	}
 	/*	if GetNowTime() <= (this.lastTradeTime + 6*3600*1000) {
 		//6小时内交易过
 		rsiNow := this.GetRsiNow()
@@ -248,10 +252,11 @@ func (this *RsiBuy) OnWaitBuy() {
 		}
 	} else */
 	rsiNow := this.GetRsiNow()
-	if rsi <= 20 && rsiNow > 20 {
+	if prersi <= 20 && rsiNow > 20 && curD <= 25 {
 		this.lastTradeTime = GetNowTime()
 		this.state = STATE_BUY_IN
-		log.Printf("OnWaitBuy prersi=%f currsi=%f buyin", rsi, rsiNow)
+		log.Printf("OnWaitBuy prersi=%f currsi=%f curD=%f buyin", prersi, rsiNow, curD)
+		return
 	}
 }
 
@@ -410,7 +415,7 @@ func (this *RsiBuy) OnWaitSell() {
 		return
 	}
 
-	if fDif >= 0 && fDem >= 0 && (fDif-fDem) < 0 {
+	if fDif >= 0.5 && fDem >= 0.5 && (fDif-fDem) < 0 {
 		//上一个时间单位是MACD>0
 		var fPreDif = coinapi.GetDIF((*this.kline)[1:])
 		var fPreDem = coinapi.GetDEM((*this.kline)[1:])
@@ -650,6 +655,19 @@ func (this *RsiBuy) GetPreRsi(lowest bool) float32 {
 		return 0
 	}
 	return rsi
+}
+
+func (this *RsiBuy) GetKDJ_DVal() float32 {
+	if this.kline == nil {
+		return 0
+	}
+
+	_, d := coinapi.GetKDJ((*this.kline), 9, 3, 3)
+	if d == 0 {
+		log.Println("GetKDJ_DVal d is zero")
+		return 0
+	}
+	return d
 }
 
 func (this *RsiBuy) GetAvgPosition() float32 {

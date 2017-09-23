@@ -119,7 +119,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 			for i := 0; i < len(*kline)/2; i++ {
 				(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 			}
-			rsi = coinapi.GetRSI((*kline), coinapi.N4)
+			rsi = coinapi.GetRSI((*kline), 4)
 			if 0 == rsi {
 				log.Println("RSI is zero")
 				return
@@ -142,7 +142,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 					log.Printf("sell: kline[0]=%v, rsi4=%f\n", (*kline)[0], rsi)
 					bSell = true
 				} else {
-					rsi6 := coinapi.GetRSI((*kline), coinapi.N6)
+					rsi6 := coinapi.GetRSI((*kline), 6)
 					if 0 == rsi6 {
 						log.Println("RSI6 is zero")
 					}
@@ -172,7 +172,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 			} else {
 				if rsi >= RSI_HIGH_LINE {
 					//如果上涨过快
-					prersi := coinapi.GetRSI((*kline)[1:], coinapi.N4)
+					prersi := coinapi.GetRSI((*kline)[1:], 4)
 					if 0 == prersi {
 						log.Println("PRERSI is zero")
 					}
@@ -251,7 +251,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 		for i := 0; i < len(*kline)/2; i++ {
 			(*kline)[i], (*kline)[len(*kline)-i-1] = (*kline)[len(*kline)-i-1], (*kline)[i]
 		}
-		rsi := coinapi.GetRSI((*kline), coinapi.N4)
+		rsi := coinapi.GetRSI((*kline), 4)
 		if 0 == rsi {
 			log.Println("RSI is zero")
 			return
@@ -261,7 +261,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 		//当前RSI小于超卖线
 		bBuy := false
 		if this.tradeState == STATE_WAIT_RSI_2 {
-			rsi6 := coinapi.GetRSI((*kline), coinapi.N6)
+			rsi6 := coinapi.GetRSI((*kline), 6)
 			if 0 == rsi6 {
 				log.Println("RSI6 is zero")
 				return
@@ -274,7 +274,7 @@ func (this *MacdRsiBuy) DoStrategy(t *time.Timer) {
 			}
 		} else {
 			if rsi <= RSI_LOW_LINE {
-				prersi := coinapi.GetRSI((*kline)[1:], coinapi.N4)
+				prersi := coinapi.GetRSI((*kline)[1:], 4)
 				if 0 == prersi {
 					log.Println("preRSI is zero")
 				}
