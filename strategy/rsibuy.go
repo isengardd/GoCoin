@@ -232,7 +232,6 @@ func (this *RsiBuy) OnWaitBuy() {
 		return
 	}
 
-	//rsi(8) < 20
 	prersi := this.GetPreRsi(true)
 	if prersi <= 0 {
 		return
@@ -252,11 +251,21 @@ func (this *RsiBuy) OnWaitBuy() {
 		}
 	} else */
 	rsiNow := this.GetRsiNow()
-	if prersi <= 20 && rsiNow > 20 && curD <= 25 {
-		this.lastTradeTime = GetNowTime()
-		this.state = STATE_BUY_IN
-		log.Printf("OnWaitBuy prersi=%f currsi=%f curD=%f buyin", prersi, rsiNow, curD)
-		return
+	//	if prersi <= 20 && rsiNow > 20 && curD <= 25 {
+	//		this.lastTradeTime = GetNowTime()
+	//		this.state = STATE_BUY_IN
+	//		log.Printf("OnWaitBuy prersi=%f currsi=%f curD=%f buyin", prersi, rsiNow, curD)
+	//		return
+	//	}
+
+	//综合考虑rsi和kdj
+	if curD <= 25 && rsiNow <= 25 {
+		if curD*0.5+rsiNow*0.5 <= 22.5 {
+			this.lastTradeTime = GetNowTime()
+			this.state = STATE_BUY_IN
+			log.Printf("OnWaitBuy prersi=%f currsi=%f curD=%f buyin", prersi, rsiNow, curD)
+			return
+		}
 	}
 }
 
@@ -662,7 +671,7 @@ func (this *RsiBuy) GetKDJ_DVal() float32 {
 		return 0
 	}
 
-	_, d := coinapi.GetKDJ((*this.kline), 9, 3, 3)
+	_, d := coinapi.GetKDJ((*this.kline), 15, 5, 5)
 	if d == 0 {
 		log.Println("GetKDJ_DVal d is zero")
 		return 0
