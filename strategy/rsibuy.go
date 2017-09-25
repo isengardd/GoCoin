@@ -14,6 +14,9 @@ const (
 	FLAG_SELL_IMMEDIATE = 1 << 1
 	FLAG_RSI_LARGE_50   = 1 << 2
 	FLAG_RSI_LARGE_40   = 1 << 3
+	FLAG_KDJ_LARGE_60   = 1 << 4
+	FLAG_KDJ_LARGE_50   = 1 << 5
+	FLAG_KDJ_LARGE_80   = 1 << 6
 )
 
 var (
@@ -356,12 +359,25 @@ func (this *RsiBuy) OnWaitSell() {
 		return
 	}
 
+	d := this.GetKDJ_DVal()
+	if d == 0 {
+		return
+	}
+
 	if rsi >= 60 {
 		this.BindFlag(FLAG_RSI_LARGE_60)
 	} else if rsi >= 50 {
 		this.BindFlag(FLAG_RSI_LARGE_50)
 	} else if rsi >= 40 {
 		this.BindFlag(FLAG_RSI_LARGE_40)
+	}
+
+	if d >= 80 {
+		this.BindFlag(FLAG_KDJ_LARGE_80)
+	} else if d >= 60 {
+		this.BindFlag(FLAG_KDJ_LARGE_60)
+	} else if d >= 50 {
+		this.BindFlag(FLAG_KDJ_LARGE_50)
 	}
 
 	position := this.GetAvgPosition()
@@ -378,64 +394,78 @@ func (this *RsiBuy) OnWaitSell() {
 		return
 	}
 
-	//如果MACD在低谷，执行较为严格的止损
-	var fDif = float32(0)
-	var fDem = float32(0)
-	if this.kline != nil {
-		fDif = coinapi.GetDIF(*this.kline)
-		fDem = coinapi.GetDEM(*this.kline)
-		//fmt.Printf("fDif=%f, fDem = %f macd=%f\n", fDif, fDem, (fDif-fDem)*2)
-
-		if (fDif < 0 || fDem < 0) && (fDif-fDem) < 0 {
-			if this.HasFlag(FLAG_RSI_LARGE_40) &&
-				curPrice <= position*0.96 {
-				this.BindFlag(FLAG_SELL_IMMEDIATE)
-				this.state = STATE_SELL_OUT
-				log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.96*position")
-				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
-				return
-			}
-
-			if this.HasFlag(FLAG_RSI_LARGE_50) &&
-				curPrice <= position*0.985 {
-				this.BindFlag(FLAG_SELL_IMMEDIATE)
-				this.state = STATE_SELL_OUT
-				log.Println("OnWaitSell FLAG_RSI_LARGE_50 , price <0.985*position")
-				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
-				return
-			}
-
-			if this.HasFlag(FLAG_RSI_LARGE_60) &&
-				curPrice <= position*1.010 {
-				this.BindFlag(FLAG_SELL_IMMEDIATE)
-				this.state = STATE_SELL_OUT
-				log.Println("OnWaitSell price<1.010*position SELL")
-				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
-				return
-			}
-		}
-	} else {
-		log.Println("OnWaitSell this.kline is nil")
-	}
-
-	if rsi >= 80 {
+	// 如果kdj的d值大于80，卖出
+	if d >= 80 {
 		this.state = STATE_SELL_OUT
-		log.Printf("OnWaitSell rsi=%f, SELL", rsi)
+		log.Printf("OnWaitSell kdj=%f, SELL", d)
 		return
 	}
 
-	if fDif >= 0.5 && fDem >= 0.5 && (fDif-fDem) < 0 {
-		//上一个时间单位是MACD>0
-		var fPreDif = coinapi.GetDIF((*this.kline)[1:])
-		var fPreDem = coinapi.GetDEM((*this.kline)[1:])
-		if fPreDif >= 0 && fPreDem >= 0 && (fPreDif-fPreDem) >= 0 {
-			this.state = STATE_SELL_OUT
-			this.BindFlag(FLAG_SELL_IMMEDIATE)
-			log.Println("OnWaitSell MACD CHANGE < 0 SELL")
-			log.Printf("fDif=%f, fDem = %f, fPreDif=%f, fPreDem=%f\n", fDif, fDem, fPreDif, fPreDem)
-			return
-		}
+	if this.HasFlag(FLAG_KDJ_LARGE_60) && d <= 44 {
+		this.BindFlag(FLAG_SELL_IMMEDIATE)
+		this.state = STATE_SELL_OUT
+		log.Printf("OnWaitSell kdj=%f, <= 44, SELL", d)
+		return
 	}
+
+	//如果MACD在低谷，执行较为严格的止损
+	//	var fDif = float32(0)
+	//	var fDem = float32(0)
+	//	if this.kline != nil {
+	//		fDif = coinapi.GetDIF(*this.kline)
+	//		fDem = coinapi.GetDEM(*this.kline)
+	//		//fmt.Printf("fDif=%f, fDem = %f macd=%f\n", fDif, fDem, (fDif-fDem)*2)
+
+	//		if (fDif < 0 || fDem < 0) && (fDif-fDem) < 0 {
+	//			if this.HasFlag(FLAG_RSI_LARGE_40) &&
+	//				curPrice <= position*0.96 {
+	//				this.BindFlag(FLAG_SELL_IMMEDIATE)
+	//				this.state = STATE_SELL_OUT
+	//				log.Println("OnWaitSell FLAG_RSI_LARGE_40 , price <0.96*position")
+	//				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+	//				return
+	//			}
+
+	//			if this.HasFlag(FLAG_RSI_LARGE_50) &&
+	//				curPrice <= position*0.985 {
+	//				this.BindFlag(FLAG_SELL_IMMEDIATE)
+	//				this.state = STATE_SELL_OUT
+	//				log.Println("OnWaitSell FLAG_RSI_LARGE_50 , price <0.985*position")
+	//				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+	//				return
+	//			}
+
+	//			if this.HasFlag(FLAG_RSI_LARGE_60) &&
+	//				curPrice <= position*1.010 {
+	//				this.BindFlag(FLAG_SELL_IMMEDIATE)
+	//				this.state = STATE_SELL_OUT
+	//				log.Println("OnWaitSell price<1.010*position SELL")
+	//				log.Printf("fDif=%f, fDem = %f\n", fDif, fDem)
+	//				return
+	//			}
+	//		}
+	//	} else {
+	//		log.Println("OnWaitSell this.kline is nil")
+	//	}
+
+	//	if rsi >= 80 {
+	//		this.state = STATE_SELL_OUT
+	//		log.Printf("OnWaitSell rsi=%f, SELL", rsi)
+	//		return
+	//	}
+
+	//	if fDif >= 0.5 && fDem >= 0.5 && (fDif-fDem) < 0 {
+	//		//上一个时间单位是MACD>0
+	//		var fPreDif = coinapi.GetDIF((*this.kline)[1:])
+	//		var fPreDem = coinapi.GetDEM((*this.kline)[1:])
+	//		if fPreDif >= 0 && fPreDem >= 0 && (fPreDif-fPreDem) >= 0 {
+	//			this.state = STATE_SELL_OUT
+	//			this.BindFlag(FLAG_SELL_IMMEDIATE)
+	//			log.Println("OnWaitSell MACD CHANGE < 0 SELL")
+	//			log.Printf("fDif=%f, fDem = %f, fPreDif=%f, fPreDem=%f\n", fDif, fDem, fPreDif, fPreDem)
+	//			return
+	//		}
+	//	}
 }
 
 func (this *RsiBuy) OnSellOut() {
